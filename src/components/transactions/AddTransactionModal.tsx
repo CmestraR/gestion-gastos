@@ -664,24 +664,48 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.accountsRow}>
                   {accounts.map((acc) => {
                     const isSelected = acc.id === selectedAccountId;
+                    const isDebtAcc = acc.type === 'debt';
                     return (
                       <TouchableOpacity
                         key={acc.id}
-                        style={[styles.accountChip, isSelected && styles.accountChipSelected]}
-                        onPress={() => setSelectedAccountId(acc.id)}
+                        style={[
+                          styles.accountChip,
+                          isSelected && (isDebtAcc ? styles.debtAccountChipSelected : styles.accountChipSelected),
+                          isDebtAcc && !isSelected && styles.debtAccountChip,
+                        ]}
+                        onPress={() => {
+                          setSelectedAccountId(acc.id);
+                          if (isDebtAcc) setApplyGmf(false);
+                        }}
                       >
                         <CustomIcon
-                          name={acc.icon || 'Landmark'}
+                          name={acc.icon || (isDebtAcc ? 'Receipt' : 'Landmark')}
                           size={13}
-                          color={isSelected ? '#FFFFFF' : '#94A3B8'}
+                          color={isSelected ? '#FFFFFF' : isDebtAcc ? '#F87171' : '#94A3B8'}
                         />
-                        <Text style={[styles.accountChipText, isSelected && styles.accountChipTextSelected]}>
-                          {acc.name}
+                        <Text
+                          style={[
+                            styles.accountChipText,
+                            isSelected && styles.accountChipTextSelected,
+                            isDebtAcc && !isSelected && { color: '#F87171' },
+                          ]}
+                        >
+                          {acc.name} {isDebtAcc ? '(Deuda)' : ''}
                         </Text>
                       </TouchableOpacity>
                     );
                   })}
                 </ScrollView>
+
+                {/* Mensaje de cuenta de deuda */}
+                {selectedAccount?.type === 'debt' && (
+                  <View style={styles.debtExpenseNoticeBox}>
+                    <CustomIcon name="Receipt" size={14} color="#EF4444" />
+                    <Text style={styles.debtExpenseNoticeText}>
+                      Este gasto se sumará a la deuda acumulada de {selectedAccount.name}.
+                    </Text>
+                  </View>
+                )}
 
                 {activeTab === 'transfer' && (
                   <View style={{ marginTop: 8 }}>
@@ -710,8 +734,8 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
                   </View>
                 )}
 
-                {/* Sección de Impuesto 4x1000 (GMF) */}
-                {(activeTab === 'expense' || activeTab === 'transfer') && (
+                {/* Sección de Impuesto 4x1000 (GMF) solo para cuentas bancarias no-deuda */}
+                {(activeTab === 'expense' || activeTab === 'transfer') && selectedAccount?.type !== 'debt' && (
                   <View style={styles.gmfCard}>
                     <TouchableOpacity
                       style={styles.gmfHeaderRow}
@@ -1332,5 +1356,30 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 15,
     fontWeight: 'bold',
+  },
+  debtAccountChip: {
+    borderColor: 'rgba(239, 68, 68, 0.4)',
+    backgroundColor: 'rgba(239, 68, 68, 0.1)',
+  },
+  debtAccountChipSelected: {
+    backgroundColor: '#EF4444',
+    borderColor: '#F87171',
+  },
+  debtExpenseNoticeBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: 'rgba(239, 68, 68, 0.12)',
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    borderRadius: 8,
+    marginTop: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(239, 68, 68, 0.3)',
+  },
+  debtExpenseNoticeText: {
+    color: '#FCA5A5',
+    fontSize: 11.5,
+    flex: 1,
   },
 });

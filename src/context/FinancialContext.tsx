@@ -32,6 +32,8 @@ interface FinancialContextType {
   totalBankBalance: number;
   totalAllAccountsBalance: number;
   totalCreditDebt: number;
+  totalOtherDebts: number;
+  totalAllDebts: number;
   netWorth: number;
   monthlyIncome: number;
   monthlyExpense: number;
@@ -137,14 +139,28 @@ export const FinancialProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     loadData();
   }, [loadData]);
 
-  // Saldo disponible (solo cuentas marcadas con includeInTotal !== false)
+  // Saldo disponible (solo cuentas líquidas: ahorros, corriente, billetera, efectivo)
   const totalBankBalance = accounts
-    .filter((acc) => acc.includeInTotal !== false)
+    .filter((acc) => acc.type !== 'debt' && acc.includeInTotal !== false)
     .reduce((sum, acc) => sum + acc.balance, 0);
 
-  const totalAllAccountsBalance = accounts.reduce((sum, acc) => sum + acc.balance, 0);
+  const totalAllAccountsBalance = accounts
+    .filter((acc) => acc.type !== 'debt')
+    .reduce((sum, acc) => sum + acc.balance, 0);
+
+  // Deudas personales acumuladas (cafetería, fiados, préstamos)
+  const totalOtherDebts = accounts
+    .filter((acc) => acc.type === 'debt')
+    .reduce((sum, acc) => sum + Math.abs(acc.balance < 0 ? acc.balance : 0), 0);
+
+  // Deuda en tarjetas de crédito
   const totalCreditDebt = cardStatements.reduce((sum, stmt) => sum + stmt.usedCredit, 0);
-  const netWorth = totalBankBalance - totalCreditDebt;
+
+  // Deuda total consolidada
+  const totalAllDebts = totalCreditDebt + totalOtherDebts;
+
+  // Patrimonio Neto = Activos Disponibles - Todas las Deudas
+  const netWorth = totalBankBalance - totalAllDebts;
 
   const currentMonthPrefix = new Date().toISOString().substring(0, 7);
   const currentMonthTransactions = transactions.filter((t) => t.date.startsWith(currentMonthPrefix));
@@ -321,6 +337,8 @@ export const FinancialProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         totalBankBalance,
         totalAllAccountsBalance,
         totalCreditDebt,
+        totalOtherDebts,
+        totalAllDebts,
         netWorth,
         monthlyIncome,
         monthlyExpense,

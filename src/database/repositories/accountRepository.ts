@@ -16,6 +16,9 @@ export const AccountRepository = {
       icon: string;
       include_in_total?: number;
       has_gmf_4x1000?: number;
+      interest_rate_monthly?: number;
+      debt_limit?: number;
+      due_date?: number | null;
       is_archived: number;
       created_at: string;
     }>('SELECT * FROM accounts WHERE is_archived = 0 ORDER BY created_at ASC');
@@ -32,6 +35,9 @@ export const AccountRepository = {
       icon: r.icon,
       includeInTotal: r.include_in_total !== 0,
       hasGmf4x1000: r.has_gmf_4x1000 === 1,
+      interestRateMonthly: r.interest_rate_monthly || 0,
+      debtLimit: r.debt_limit || undefined,
+      dueDate: r.due_date || undefined,
       isArchived: r.is_archived === 1,
       createdAt: r.created_at,
     }));
@@ -40,8 +46,10 @@ export const AccountRepository = {
   async create(account: Account): Promise<void> {
     const db = await getDatabase();
     await db.runAsync(
-      `INSERT INTO accounts (id, name, type, bank_name, balance, initial_balance, currency, color, icon, include_in_total, has_gmf_4x1000, is_archived, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO accounts (
+        id, name, type, bank_name, balance, initial_balance, currency, color, icon,
+        include_in_total, has_gmf_4x1000, interest_rate_monthly, debt_limit, due_date, is_archived, created_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         account.id,
         account.name,
@@ -54,6 +62,9 @@ export const AccountRepository = {
         account.icon,
         account.includeInTotal !== false ? 1 : 0,
         account.hasGmf4x1000 ? 1 : 0,
+        account.interestRateMonthly || 0,
+        account.debtLimit || 0,
+        account.dueDate || null,
         account.isArchived ? 1 : 0,
         account.createdAt,
       ]
@@ -64,7 +75,8 @@ export const AccountRepository = {
     const db = await getDatabase();
     await db.runAsync(
       `UPDATE accounts 
-       SET name = ?, type = ?, bank_name = ?, balance = ?, currency = ?, color = ?, icon = ?, include_in_total = ?, has_gmf_4x1000 = ?
+       SET name = ?, type = ?, bank_name = ?, balance = ?, currency = ?, color = ?, icon = ?,
+           include_in_total = ?, has_gmf_4x1000 = ?, interest_rate_monthly = ?, debt_limit = ?, due_date = ?
        WHERE id = ?`,
       [
         account.name,
@@ -76,6 +88,9 @@ export const AccountRepository = {
         account.icon,
         account.includeInTotal !== false ? 1 : 0,
         account.hasGmf4x1000 ? 1 : 0,
+        account.interestRateMonthly || 0,
+        account.debtLimit || 0,
+        account.dueDate || null,
         account.id,
       ]
     );

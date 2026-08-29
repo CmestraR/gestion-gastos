@@ -21,7 +21,8 @@ import { InstallmentAmortizationModal } from '../components/cards/InstallmentAmo
 import { AddTransactionModal } from '../components/transactions/AddTransactionModal';
 import { QuickIslandBar } from '../components/common/QuickIslandBar';
 import { ParsedBankMessage } from '../utils/bankNotificationParser';
-import { CreditCard, CardStatementSummary, CardPurchase } from '../types/finance';
+import { CreditCard, CardStatementSummary, CardPurchase, Account } from '../types/finance';
+import { PayDebtModal } from '../components/accounts/PayDebtModal';
 
 interface DashboardScreenProps {
   onNavigateToTab: (tabName: string, params?: { accountId?: string }) => void;
@@ -31,6 +32,8 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({ onNavigateToTa
   const {
     totalBankBalance,
     totalCreditDebt,
+    totalOtherDebts,
+    totalAllDebts,
     netWorth,
     monthlyIncome,
     monthlyExpense,
@@ -57,6 +60,13 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({ onNavigateToTa
 
   const [addTxVisible, setAddTxVisible] = useState(false);
   const [prefillData, setPrefillData] = useState<Partial<ParsedBankMessage> | null>(null);
+  const [payDebtModalVisible, setPayDebtModalVisible] = useState(false);
+  const [selectedDebtAccountToPay, setSelectedDebtAccountToPay] = useState<Account | null>(null);
+
+  const handleOpenPayDebt = (acc: Account) => {
+    setSelectedDebtAccountToPay(acc);
+    setPayDebtModalVisible(true);
+  };
 
   const handleOpenAddWithPrefill = (data?: Partial<ParsedBankMessage>) => {
     setPrefillData(data || null);
@@ -129,7 +139,7 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({ onNavigateToTa
             <View style={styles.netWorthItem}>
               <View style={styles.dotIncome} />
               <View>
-                <Text style={styles.breakdownSub}>Total en Cuentas</Text>
+                <Text style={styles.breakdownSub}>Total Cuentas</Text>
                 <Text style={styles.breakdownVal}>
                   {isBalanceHidden ? '••••••' : formatCurrency(totalBankBalance, currency)}
                 </Text>
@@ -141,9 +151,13 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({ onNavigateToTa
             <View style={styles.netWorthItem}>
               <View style={styles.dotDebt} />
               <View>
-                <Text style={styles.breakdownSub}>Deuda Tarjetas</Text>
+                <Text style={styles.breakdownSub}>
+                  {totalOtherDebts > 0 ? 'Total Deudas' : 'Deuda Tarjetas'}
+                </Text>
                 <Text style={[styles.breakdownVal, { color: '#F87171' }]}>
-                  {isBalanceHidden ? '••••••' : formatCurrency(totalCreditDebt, currency)}
+                  {isBalanceHidden
+                    ? '••••••'
+                    : formatCurrency(totalOtherDebts > 0 ? totalAllDebts : totalCreditDebt, currency)}
                 </Text>
               </View>
             </View>
@@ -297,6 +311,7 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({ onNavigateToTa
               key={acc.id}
               account={acc}
               onPress={() => onNavigateToTab('transactions', { accountId: acc.id })}
+              onPayDebt={() => handleOpenPayDebt(acc)}
             />
           ))}
         </View>
@@ -345,6 +360,15 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({ onNavigateToTa
         onClose={() => {
           setAddTxVisible(false);
           setPrefillData(null);
+        }}
+      />
+
+      <PayDebtModal
+        visible={payDebtModalVisible}
+        debtAccount={selectedDebtAccountToPay}
+        onClose={() => {
+          setPayDebtModalVisible(false);
+          setSelectedDebtAccountToPay(null);
         }}
       />
     </View>

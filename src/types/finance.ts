@@ -1,4 +1,4 @@
-export type AccountType = 'savings' | 'checking' | 'cash' | 'wallet' | 'investment';
+export type AccountType = 'savings' | 'checking' | 'cash' | 'wallet' | 'investment' | 'debt';
 export type CardBrand = 'visa' | 'mastercard' | 'amex' | 'other';
 export type TransactionType = 'expense' | 'income' | 'transfer' | 'card_payment' | 'card_purchase';
 export type PurchaseStatus = 'active' | 'completed' | 'cancelled';
@@ -15,6 +15,9 @@ export interface Account {
   icon: string;
   includeInTotal: boolean; // Si cuenta en el saldo disponible total
   hasGmf4x1000?: boolean; // Si aplica impuesto del 4x1000 (0.4%) a débitos
+  interestRateMonthly?: number; // Tasa de interés mensual si es una deuda (% E.M.)
+  debtLimit?: number; // Límite de crédito/fiado si aplica
+  dueDate?: number; // Día de pago del mes si aplica (1-31)
   isArchived: boolean;
   createdAt: string;
 }

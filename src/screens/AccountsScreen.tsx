@@ -5,8 +5,6 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  SafeAreaView,
-  StatusBar,
 } from 'react-native';
 import { useFinancial } from '../context/FinancialContext';
 import { formatCurrency } from '../utils/formatters';
@@ -16,12 +14,15 @@ import { Account } from '../types/finance';
 import { AccountCard } from '../components/accounts/AccountCard';
 import { AddAccountModal } from '../components/accounts/AddAccountModal';
 import { AddTransactionModal } from '../components/transactions/AddTransactionModal';
+import { PayDebtModal } from '../components/accounts/PayDebtModal';
 
 export const AccountsScreen: React.FC = () => {
-  const { accounts, totalBankBalance, currency } = useFinancial();
+  const { accounts, totalBankBalance, totalOtherDebts, currency } = useFinancial();
   const [addAccountModalVisible, setAddAccountModalVisible] = useState(false);
   const [selectedAccountToEdit, setSelectedAccountToEdit] = useState<Account | null>(null);
   const [transferModalVisible, setTransferModalVisible] = useState(false);
+  const [payDebtModalVisible, setPayDebtModalVisible] = useState(false);
+  const [selectedDebtAccountToPay, setSelectedDebtAccountToPay] = useState<Account | null>(null);
 
   const handleOpenCreate = () => {
     setSelectedAccountToEdit(null);
@@ -33,14 +34,22 @@ export const AccountsScreen: React.FC = () => {
     setAddAccountModalVisible(true);
   };
 
+  const handleOpenPayDebt = (acc: Account) => {
+    setSelectedDebtAccountToPay(acc);
+    setPayDebtModalVisible(true);
+  };
+
+  const liquidAccounts = accounts.filter((a) => a.type !== 'debt');
+  const debtAccounts = accounts.filter((a) => a.type === 'debt');
+
   return (
     <View style={styles.safeArea}>
       <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
         {/* Header */}
         <View style={styles.header}>
           <View>
-            <Text style={styles.tag}>MIS FONDOS</Text>
-            <Text style={styles.title}>Cuentas & Billeteras</Text>
+            <Text style={styles.tag}>MIS FONDOS & DEUDAS</Text>
+            <Text style={styles.title}>Cuentas & Obligaciones</Text>
           </View>
           <TouchableOpacity
             style={styles.addBtn}
@@ -53,9 +62,19 @@ export const AccountsScreen: React.FC = () => {
 
         {/* Resumen Total */}
         <View style={styles.heroCard}>
-          <Text style={styles.heroLabel}>SALDO TOTAL EN CUENTAS</Text>
-          <Text style={styles.heroAmount}>{formatCurrency(totalBankBalance, currency)}</Text>
-          <Text style={styles.heroSub}>{accounts.length} cuentas y billeteras activas (Toca para editar)</Text>
+          <View style={styles.heroRow}>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.heroLabel}>SALDO DISPONIBLE EN CUENTAS</Text>
+              <Text style={styles.heroAmount}>{formatCurrency(totalBankBalance, currency)}</Text>
+            </View>
+            {totalOtherDebts > 0 && (
+              <View style={styles.heroDebtCol}>
+                <Text style={styles.heroDebtLabel}>DEUDAS ACTIVAS</Text>
+                <Text style={styles.heroDebtAmount}>-{formatCurrency(totalOtherDebts, currency)}</Text>
+              </View>
+            )}
+          </View>
+          <Text style={styles.heroSub}>{liquidAccounts.length} cuentas disponibles • {debtAccounts.length} deudas activas</Text>
 
           <TouchableOpacity
             style={styles.transferBtn}
@@ -66,27 +85,54 @@ export const AccountsScreen: React.FC = () => {
           </TouchableOpacity>
         </View>
 
-        {/* Lista de Cuentas */}
-        <Text style={styles.sectionHeading}>Todas las Cuentas (Toca para editar)</Text>
+        {/* Sección: Cuentas y Billeteras Líquidas */}
+        <Text style={styles.sectionHeading}>Cuentas & Billeteras ({liquidAccounts.length})</Text>
 
-        {accounts.length === 0 ? (
+        {liquidAccounts.length === 0 ? (
           <View style={styles.emptyState}>
-            <CustomIcon name="Landmark" size={36} color="#64748B" />
-            <Text style={styles.emptyTitle}>Sin cuentas registradas</Text>
-            <Text style={styles.emptyText}>Agrega tus cuentas bancarias, billeteras digitales o efectivo.</Text>
-            <TouchableOpacity
-              style={styles.emptyBtn}
-              onPress={handleOpenCreate}
-            >
-              <Text style={styles.emptyBtnText}>Agregar Cuenta</Text>
-            </TouchableOpacity>
+            <CustomIcon name="Landmark" size={32} color="#64748B" />
+            <Text style={styles.emptyTitle}>Sin cuentas bancarias</Text>
+            <Text style={styles.emptyText}>Agrega cuentas de ahorros, corriente, efectivo o billeteras.</Text>
           </View>
         ) : (
-          accounts.map((acc) => (
+          liquidAccounts.map((acc) => (
             <AccountCard
               key={acc.id}
               account={acc}
               onPress={() => handleOpenEdit(acc)}
+            />
+          ))
+        )}
+
+        {/* Sección: Deudas y Cuentas por Pagar (Fiados, Cafetería, etc.) */}
+        <View style={styles.debtHeaderRow}>
+          <Text style={[styles.sectionHeading, { color: '#F87171', marginTop: 16 }]}>
+            Deudas & Cuentas por Pagar ({debtAccounts.length})
+          </Text>
+          {debtAccounts.length > 0 && (
+            <View style={styles.debtTotalBadge}>
+              <Text style={styles.debtTotalBadgeText}>
+                Total: -{formatCurrency(totalOtherDebts, currency)}
+              </Text>
+            </View>
+          )}
+        </View>
+
+        {debtAccounts.length === 0 ? (
+          <View style={[styles.emptyState, { backgroundColor: '#13111C' }]}>
+            <CustomIcon name="Receipt" size={32} color="#64748B" />
+            <Text style={styles.emptyTitle}>Sin deudas pendientes</Text>
+            <Text style={styles.emptyText}>
+              ¿Consumes en la cafetería o tienes fiados? Crea una cuenta de deuda para registrar consumos y pagarla a fin de mes.
+            </Text>
+          </View>
+        ) : (
+          debtAccounts.map((acc) => (
+            <AccountCard
+              key={acc.id}
+              account={acc}
+              onPress={() => handleOpenEdit(acc)}
+              onPayDebt={() => handleOpenPayDebt(acc)}
             />
           ))
         )}
@@ -108,6 +154,15 @@ export const AccountsScreen: React.FC = () => {
         visible={transferModalVisible}
         defaultType="transfer"
         onClose={() => setTransferModalVisible(false)}
+      />
+
+      <PayDebtModal
+        visible={payDebtModalVisible}
+        debtAccount={selectedDebtAccountToPay}
+        onClose={() => {
+          setPayDebtModalVisible(false);
+          setSelectedDebtAccountToPay(null);
+        }}
       />
     </View>
   );
@@ -138,6 +193,7 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 22,
     fontWeight: 'bold',
+    marginTop: 2,
   },
   addBtn: {
     flexDirection: 'row',
@@ -154,81 +210,113 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   heroCard: {
-    backgroundColor: Theme.colors.surfaceCard,
-    borderRadius: 20,
-    padding: 20,
-    alignItems: 'center',
-    marginBottom: 20,
+    backgroundColor: Theme.colors.surfaceElevated,
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 16,
     borderWidth: 1,
-    borderColor: '#1E293B',
+    borderColor: '#334155',
+  },
+  heroRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
   },
   heroLabel: {
     color: '#94A3B8',
     fontSize: 11,
-    fontWeight: '700',
-    letterSpacing: 1.2,
+    fontWeight: 'bold',
+    letterSpacing: 0.5,
   },
   heroAmount: {
-    color: '#34D399',
-    fontSize: 28,
+    color: '#FFFFFF',
+    fontSize: 24,
     fontWeight: 'bold',
-    marginVertical: 6,
+    marginTop: 4,
+  },
+  heroDebtCol: {
+    alignItems: 'flex-end',
+  },
+  heroDebtLabel: {
+    color: '#F87171',
+    fontSize: 10.5,
+    fontWeight: 'bold',
+    letterSpacing: 0.5,
+  },
+  heroDebtAmount: {
+    color: '#EF4444',
+    fontSize: 16,
+    fontWeight: 'bold',
+    marginTop: 2,
   },
   heroSub: {
     color: '#64748B',
-    fontSize: 12,
+    fontSize: 11,
+    marginTop: 4,
     marginBottom: 14,
   },
   transferBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#06B6D4',
-    paddingHorizontal: 16,
+    justifyContent: 'center',
+    backgroundColor: '#1E293B',
     paddingVertical: 10,
-    borderRadius: 12,
-    gap: 8,
+    borderRadius: 10,
+    gap: 6,
+    borderWidth: 1,
+    borderColor: '#334155',
   },
   transferBtnText: {
-    color: '#FFFFFF',
+    color: '#818CF8',
     fontSize: 13,
     fontWeight: 'bold',
   },
   sectionHeading: {
     color: '#FFFFFF',
-    fontSize: 16,
+    fontSize: 14.5,
     fontWeight: 'bold',
-    marginBottom: 12,
+    marginBottom: 10,
+    marginTop: 4,
+  },
+  debtHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  debtTotalBadge: {
+    backgroundColor: 'rgba(239, 68, 68, 0.15)',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: 'rgba(239, 68, 68, 0.3)',
+  },
+  debtTotalBadgeText: {
+    color: '#F87171',
+    fontSize: 11,
+    fontWeight: 'bold',
   },
   emptyState: {
     backgroundColor: Theme.colors.surfaceCard,
-    borderRadius: 16,
-    padding: 30,
+    borderRadius: 14,
+    padding: 20,
     alignItems: 'center',
+    marginBottom: 14,
     borderWidth: 1,
     borderColor: '#1E293B',
   },
   emptyTitle: {
     color: '#FFFFFF',
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: 'bold',
-    marginTop: 10,
+    marginTop: 8,
   },
   emptyText: {
     color: '#94A3B8',
-    fontSize: 12,
+    fontSize: 11.5,
     textAlign: 'center',
     marginTop: 4,
-    marginBottom: 16,
-  },
-  emptyBtn: {
-    backgroundColor: Theme.colors.primary,
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 10,
-  },
-  emptyBtnText: {
-    color: '#FFFFFF',
-    fontSize: 13,
-    fontWeight: 'bold',
+    lineHeight: 16,
   },
 });

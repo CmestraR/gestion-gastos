@@ -27,6 +27,9 @@ export async function initDatabase(db: SQLite.SQLiteDatabase): Promise<void> {
       icon TEXT NOT NULL,
       include_in_total INTEGER NOT NULL DEFAULT 1,
       has_gmf_4x1000 INTEGER NOT NULL DEFAULT 0,
+      interest_rate_monthly REAL NOT NULL DEFAULT 0,
+      debt_limit REAL NOT NULL DEFAULT 0,
+      due_date INTEGER,
       is_archived INTEGER NOT NULL DEFAULT 0,
       created_at TEXT NOT NULL
     );
@@ -121,6 +124,18 @@ export async function initDatabase(db: SQLite.SQLiteDatabase): Promise<void> {
 
   try {
     await db.execAsync(`ALTER TABLE accounts ADD COLUMN has_gmf_4x1000 INTEGER NOT NULL DEFAULT 0;`);
+  } catch (_) {}
+
+  try {
+    await db.execAsync(`ALTER TABLE accounts ADD COLUMN interest_rate_monthly REAL NOT NULL DEFAULT 0;`);
+  } catch (_) {}
+
+  try {
+    await db.execAsync(`ALTER TABLE accounts ADD COLUMN debt_limit REAL NOT NULL DEFAULT 0;`);
+  } catch (_) {}
+
+  try {
+    await db.execAsync(`ALTER TABLE accounts ADD COLUMN due_date INTEGER;`);
   } catch (_) {}
 
   try {
