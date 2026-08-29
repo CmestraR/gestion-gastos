@@ -14,6 +14,7 @@ export interface Account {
   color: string;
   icon: string;
   includeInTotal: boolean; // Si cuenta en el saldo disponible total
+  hasGmf4x1000?: boolean; // Si aplica impuesto del 4x1000 (0.4%) a débitos
   isArchived: boolean;
   createdAt: string;
 }
@@ -75,6 +76,7 @@ export interface Transaction {
   date: string; // YYYY-MM-DD or ISO string
   toAccountId?: string | null; // For transfers
   cardPurchaseId?: string | null; // Linked purchase
+  gmfAmount?: number; // Monto cobrado por 4x1000 si aplica
   createdAt: string;
 }
 

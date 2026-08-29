@@ -9,6 +9,7 @@ import {
   StatusBar,
 } from 'react-native';
 import { useFinancial } from '../context/FinancialContext';
+import { useAlert } from '../context/AlertContext';
 import { formatCurrency } from '../utils/formatters';
 import { Theme } from '../components/common/Theme';
 import { CustomIcon } from '../components/common/CustomIcon';
@@ -24,8 +25,10 @@ export const CardsScreen: React.FC = () => {
     creditCards,
     cardStatements,
     activePurchases,
+    deleteCreditCard,
     currency,
   } = useFinancial();
+  const { showConfirm, showSuccess } = useAlert();
 
   const [addCardModalVisible, setAddCardModalVisible] = useState(false);
   const [selectedCardToEdit, setSelectedCardToEdit] = useState<CreditCard | null>(null);
@@ -52,6 +55,20 @@ export const CardsScreen: React.FC = () => {
   const handleOpenEditCard = (card: CreditCard) => {
     setSelectedCardToEdit(card);
     setAddCardModalVisible(true);
+  };
+
+  const handleDeleteCard = (card: CreditCard) => {
+    showConfirm(
+      'Eliminar Tarjeta',
+      `¿Estás seguro de que deseas eliminar la tarjeta "${card.name}" (${card.bankName})? Se eliminarán todas sus cuotas, extractos y compras vinculadas.`,
+      async () => {
+        await deleteCreditCard(card.id);
+        showSuccess('Tarjeta Eliminada', `La tarjeta ${card.name} fue eliminada correctamente.`);
+      },
+      'Eliminar',
+      'Cancelar',
+      true
+    );
   };
 
   const handleOpenStatement = (card: CreditCard) => {
@@ -165,7 +182,15 @@ export const CardsScreen: React.FC = () => {
                     onPress={() => handleOpenEditCard(card)}
                   >
                     <CustomIcon name="Edit3" size={13} color="#CBD5E1" />
-                    <Text style={styles.editCardBtnText}>Editar Tarjeta</Text>
+                    <Text style={styles.editCardBtnText}>Editar</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={styles.deleteCardBtn}
+                    onPress={() => handleDeleteCard(card)}
+                  >
+                    <CustomIcon name="Trash2" size={13} color="#EF4444" />
+                    <Text style={styles.deleteCardBtnText}>Eliminar</Text>
                   </TouchableOpacity>
                 </View>
 
@@ -374,8 +399,9 @@ const styles = StyleSheet.create({
   cardHeaderActions: {
     flexDirection: 'row',
     justifyContent: 'flex-end',
+    alignItems: 'center',
+    gap: 8,
     marginBottom: 6,
-    paddingRight: 4,
   },
   editCardBtn: {
     flexDirection: 'row',
@@ -390,8 +416,24 @@ const styles = StyleSheet.create({
   },
   editCardBtnText: {
     color: '#CBD5E1',
-    fontSize: 11,
+    fontSize: 11.5,
     fontWeight: '600',
+  },
+  deleteCardBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: 'rgba(239, 68, 68, 0.12)',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(239, 68, 68, 0.3)',
+  },
+  deleteCardBtnText: {
+    color: '#EF4444',
+    fontSize: 11.5,
+    fontWeight: 'bold',
   },
   cardPurchasesList: {
     backgroundColor: Theme.colors.surfaceCard,

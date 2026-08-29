@@ -35,8 +35,8 @@ export const AddCreditCardModal: React.FC<AddCreditCardModalProps> = ({
   onClose,
   cardToEdit,
 }) => {
-  const { addCreditCard, updateCreditCard, currency } = useFinancial();
-  const { showSuccess, showWarning, showError } = useAlert();
+  const { addCreditCard, updateCreditCard, deleteCreditCard, currency } = useFinancial();
+  const { showSuccess, showWarning, showConfirm, showError } = useAlert();
   const isEditing = !!cardToEdit;
 
   const [name, setName] = useState('');
@@ -321,29 +321,62 @@ export const AddCreditCardModal: React.FC<AddCreditCardModalProps> = ({
             </View>
 
             {/* Selector de Gradiente */}
-            <Text style={styles.label}>Estilo Visual / Color</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.gradientsRow}>
-              {Theme.colors.cardGradients.map((g, idx) => {
-                const isSelected = selectedGradientIndex === idx;
-                return (
-                  <TouchableOpacity
-                    key={idx}
-                    style={[
-                      styles.gradientChoice,
-                      { backgroundColor: g[0], borderColor: g[1] },
-                      isSelected && styles.gradientChoiceSelected,
-                    ]}
-                    onPress={() => setSelectedGradientIndex(idx)}
-                  />
-                );
-              })}
-            </ScrollView>
+            <View style={styles.colorSection}>
+              <Text style={styles.colorLabel}>Estilo Visual / Color</Text>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                style={styles.gradientsScroll}
+                contentContainerStyle={styles.gradientsContent}
+              >
+                {Theme.colors.cardGradients.map((g, idx) => {
+                  const isSelected = selectedGradientIndex === idx;
+                  return (
+                    <TouchableOpacity
+                      key={idx}
+                      style={[
+                        styles.gradientChoice,
+                        { backgroundColor: g[0], borderColor: isSelected ? '#FFFFFF' : g[1] },
+                        isSelected && styles.gradientChoiceSelected,
+                      ]}
+                      onPress={() => setSelectedGradientIndex(idx)}
+                      activeOpacity={0.8}
+                    />
+                  );
+                })}
+              </ScrollView>
+            </View>
 
             <TouchableOpacity style={styles.saveBtn} onPress={handleSave}>
               <Text style={styles.saveBtnText}>
                 {isEditing ? 'Actualizar Tarjeta' : 'Registrar Tarjeta'}
               </Text>
             </TouchableOpacity>
+
+            {/* Botón de Eliminar Tarjeta en Modo Edición */}
+            {isEditing && cardToEdit && (
+              <TouchableOpacity
+                style={styles.deleteCardModalBtn}
+                onPress={() => {
+                  showConfirm(
+                    'Eliminar Tarjeta',
+                    `¿Estás seguro de que deseas eliminar "${cardToEdit.name}"? Se eliminarán todas sus cuotas y compras asociadas.`,
+                    async () => {
+                      await deleteCreditCard(cardToEdit.id);
+                      showSuccess('Tarjeta Eliminada', 'La tarjeta ha sido eliminada.');
+                      onClose();
+                    },
+                    'Eliminar',
+                    'Cancelar',
+                    true
+                  );
+                }}
+                activeOpacity={0.8}
+              >
+                <CustomIcon name="Trash2" size={16} color="#EF4444" />
+                <Text style={styles.deleteCardModalBtnText}>Eliminar Tarjeta</Text>
+              </TouchableOpacity>
+            )}
           </ScrollView>
         </View>
       </View>
@@ -466,20 +499,35 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     textTransform: 'uppercase',
   },
-  gradientsRow: {
-    flexDirection: 'row',
-    marginVertical: 8,
+  colorSection: {
+    marginTop: 14,
+    marginBottom: 10,
+  },
+  colorLabel: {
+    color: '#94A3B8',
+    fontSize: 13,
+    fontWeight: '600',
+    marginBottom: 8,
+  },
+  gradientsScroll: {
+    flexGrow: 0,
+    height: 44,
+  },
+  gradientsContent: {
+    alignItems: 'center',
+    paddingVertical: 2,
+    paddingHorizontal: 2,
+    gap: 10,
   },
   gradientChoice: {
-    width: 44,
-    height: 28,
-    borderRadius: 6,
-    marginRight: 10,
+    width: 48,
+    height: 32,
+    borderRadius: 8,
     borderWidth: 2,
   },
   gradientChoiceSelected: {
+    borderWidth: 2.5,
     borderColor: '#FFFFFF',
-    transform: [{ scale: 1.15 }],
   },
   saveBtn: {
     backgroundColor: '#6366F1',
@@ -491,6 +539,23 @@ const styles = StyleSheet.create({
   saveBtnText: {
     color: '#FFFFFF',
     fontSize: 15,
+    fontWeight: 'bold',
+  },
+  deleteCardModalBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: 'rgba(239, 68, 68, 0.12)',
+    paddingVertical: 12,
+    borderRadius: 12,
+    marginTop: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(239, 68, 68, 0.3)',
+  },
+  deleteCardModalBtnText: {
+    color: '#EF4444',
+    fontSize: 14,
     fontWeight: 'bold',
   },
 });

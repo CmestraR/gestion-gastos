@@ -110,6 +110,14 @@ export const TransactionItem: React.FC<TransactionItemProps> = ({ transaction, o
         </Text>
         <View style={styles.metaRow}>
           <Text style={styles.accountText}>{getAccountLabel()}</Text>
+          {!!transaction.gmfAmount && transaction.gmfAmount > 0 && (
+            <>
+              <Text style={styles.dot}>•</Text>
+              <Text style={{ color: '#F87171', fontSize: 10.5, fontWeight: '700' }}>
+                +4x1000: {formatCurrency(transaction.gmfAmount, currency)}
+              </Text>
+            </>
+          )}
           <Text style={styles.dot}>•</Text>
           <Text style={styles.dateText}>{formatRelativeDate(transaction.date)}</Text>
         </View>

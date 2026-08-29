@@ -109,7 +109,12 @@ export const CardRepository = {
 
   async delete(id: string): Promise<void> {
     const db = await getDatabase();
-    await db.runAsync('DELETE FROM credit_cards WHERE id = ?', [id]);
+    await db.execAsync(`
+      DELETE FROM transactions WHERE card_id = '${id}' OR card_purchase_id IN (SELECT id FROM card_purchases WHERE card_id = '${id}');
+      DELETE FROM card_installments WHERE purchase_id IN (SELECT id FROM card_purchases WHERE card_id = '${id}');
+      DELETE FROM card_purchases WHERE card_id = '${id}';
+      DELETE FROM credit_cards WHERE id = '${id}';
+    `);
   },
 
   // === Compras y Cuotas ===

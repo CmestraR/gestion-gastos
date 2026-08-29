@@ -55,6 +55,7 @@ export const TransactionRepository = {
       date: string;
       to_account_id: string | null;
       card_purchase_id: string | null;
+      gmf_amount?: number;
       created_at: string;
     }>(query, params);
 
@@ -70,6 +71,7 @@ export const TransactionRepository = {
       date: r.date,
       toAccountId: r.to_account_id || undefined,
       cardPurchaseId: r.card_purchase_id || undefined,
+      gmfAmount: r.gmf_amount || undefined,
       createdAt: r.created_at,
     }));
   },
@@ -79,8 +81,8 @@ export const TransactionRepository = {
 
     await db.runAsync(
       `INSERT INTO transactions (
-        id, account_id, card_id, type, amount, category_id, description, notes, date, to_account_id, card_purchase_id, created_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        id, account_id, card_id, type, amount, category_id, description, notes, date, to_account_id, card_purchase_id, gmf_amount, created_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         tx.id,
         tx.accountId || null,
@@ -93,17 +95,18 @@ export const TransactionRepository = {
         tx.date,
         tx.toAccountId || null,
         tx.cardPurchaseId || null,
+        tx.gmfAmount || 0,
         tx.createdAt,
       ]
     );
 
     // Actualizar saldos de cuentas si corresponde
     if (tx.type === 'expense' && tx.accountId) {
-      await AccountRepository.updateBalance(tx.accountId, -tx.amount);
+      await AccountRepository.updateBalance(tx.accountId, -(tx.amount + (tx.gmfAmount || 0)));
     } else if (tx.type === 'income' && tx.accountId) {
       await AccountRepository.updateBalance(tx.accountId, tx.amount);
     } else if (tx.type === 'transfer' && tx.accountId && tx.toAccountId) {
-      await AccountRepository.updateBalance(tx.accountId, -tx.amount);
+      await AccountRepository.updateBalance(tx.accountId, -(tx.amount + (tx.gmfAmount || 0)));
       await AccountRepository.updateBalance(tx.toAccountId, tx.amount);
     } else if (tx.type === 'card_payment' && tx.accountId) {
       await AccountRepository.updateBalance(tx.accountId, -tx.amount);
@@ -118,16 +121,18 @@ export const TransactionRepository = {
       type: string;
       amount: number;
       to_account_id: string | null;
-    }>('SELECT id, account_id, type, amount, to_account_id FROM transactions WHERE id = ?', [id]);
+      gmf_amount?: number;
+    }>('SELECT id, account_id, type, amount, to_account_id, gmf_amount FROM transactions WHERE id = ?', [id]);
 
     if (tx) {
+      const gmf = tx.gmf_amount || 0;
       // Revertir efecto en saldo
       if (tx.type === 'expense' && tx.account_id) {
-        await AccountRepository.updateBalance(tx.account_id, tx.amount);
+        await AccountRepository.updateBalance(tx.account_id, tx.amount + gmf);
       } else if (tx.type === 'income' && tx.account_id) {
         await AccountRepository.updateBalance(tx.account_id, -tx.amount);
       } else if (tx.type === 'transfer' && tx.account_id && tx.to_account_id) {
-        await AccountRepository.updateBalance(tx.account_id, tx.amount);
+        await AccountRepository.updateBalance(tx.account_id, tx.amount + gmf);
         await AccountRepository.updateBalance(tx.to_account_id, -tx.amount);
       }
       await db.runAsync('DELETE FROM transactions WHERE id = ?', [id]);

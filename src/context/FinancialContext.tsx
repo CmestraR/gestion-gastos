@@ -99,7 +99,7 @@ export const FinancialProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
       const isFirstRun = await AsyncStorage.getItem('@app_initialized_v1');
       if (!isFirstRun) {
-        await seedSampleData();
+        // Inicialización limpia en 0 (sin datos de ejemplo predeterminados)
         await AsyncStorage.setItem('@app_initialized_v1', 'true');
       }
 
@@ -301,7 +301,7 @@ export const FinancialProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       DELETE FROM accounts;
       DELETE FROM budgets;
     `);
-    await AsyncStorage.removeItem('@app_initialized_v1');
+    await AsyncStorage.setItem('@app_initialized_v1', 'true');
     await loadData();
   };
 

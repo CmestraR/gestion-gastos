@@ -59,6 +59,11 @@ export const AccountCard: React.FC<AccountCardProps> = ({ account, onPress }) =>
           <CustomIcon name={account.icon || 'Landmark'} size={18} color={account.color} />
         </View>
         <View style={{ flexDirection: 'row', gap: 6 }}>
+          {account.hasGmf4x1000 && (
+            <View style={[styles.typeBadge, { backgroundColor: 'rgba(239, 68, 68, 0.15)', borderColor: 'rgba(239, 68, 68, 0.4)', borderWidth: 1 }]}>
+              <Text style={[styles.typeBadgeText, { color: '#F87171', fontWeight: 'bold' }]}>4x1000</Text>
+            </View>
+          )}
           {account.includeInTotal === false && (
             <View style={[styles.typeBadge, { backgroundColor: 'rgba(245, 158, 11, 0.15)', borderColor: '#F59E0B', borderWidth: 1 }]}>
               <Text style={[styles.typeBadgeText, { color: '#FBBF24' }]}>Separado</Text>

@@ -26,6 +26,7 @@ export async function initDatabase(db: SQLite.SQLiteDatabase): Promise<void> {
       color TEXT NOT NULL,
       icon TEXT NOT NULL,
       include_in_total INTEGER NOT NULL DEFAULT 1,
+      has_gmf_4x1000 INTEGER NOT NULL DEFAULT 0,
       is_archived INTEGER NOT NULL DEFAULT 0,
       created_at TEXT NOT NULL
     );
@@ -100,6 +101,7 @@ export async function initDatabase(db: SQLite.SQLiteDatabase): Promise<void> {
       date TEXT NOT NULL,
       to_account_id TEXT,
       card_purchase_id TEXT,
+      gmf_amount REAL NOT NULL DEFAULT 0,
       created_at TEXT NOT NULL
     );
 
@@ -115,6 +117,14 @@ export async function initDatabase(db: SQLite.SQLiteDatabase): Promise<void> {
   // Migraciones seguras para bases de datos existentes
   try {
     await db.execAsync(`ALTER TABLE accounts ADD COLUMN include_in_total INTEGER NOT NULL DEFAULT 1;`);
+  } catch (_) {}
+
+  try {
+    await db.execAsync(`ALTER TABLE accounts ADD COLUMN has_gmf_4x1000 INTEGER NOT NULL DEFAULT 0;`);
+  } catch (_) {}
+
+  try {
+    await db.execAsync(`ALTER TABLE transactions ADD COLUMN gmf_amount REAL NOT NULL DEFAULT 0;`);
   } catch (_) {}
 
   try {
@@ -204,11 +214,11 @@ const defaultCategoriesList = [
     },
     {
       id: 'cat-financial',
-      name: 'Gastos Financieros / Cuotas',
+      name: 'Gastos Financieros & 4x1000',
       type: 'expense',
-      icon: 'CreditCard',
-      color: '#64748B',
-      keywords: ['cuota', 'intereses', 'manejo', 'comision', 'abono tarjeta', 'cuota prestamo', 'banco', 'gravamen', '4x1000'],
+      icon: 'Percent',
+      color: '#E11D48',
+      keywords: ['cuota', 'intereses', 'manejo', 'comision', 'abono tarjeta', 'cuota prestamo', 'banco', 'gravamen', '4x1000', 'gmf', 'impuesto financiero'],
     },
     {
       id: 'cat-other-exp',

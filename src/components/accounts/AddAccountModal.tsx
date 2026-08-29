@@ -57,6 +57,7 @@ export const AddAccountModal: React.FC<AddAccountModalProps> = ({
   const [initialBalance, setInitialBalance] = useState('');
   const [selectedColor, setSelectedColor] = useState(COLORS[0]);
   const [includeInTotal, setIncludeInTotal] = useState(true);
+  const [hasGmf4x1000, setHasGmf4x1000] = useState(false);
 
   useEffect(() => {
     if (accountToEdit) {
@@ -66,6 +67,7 @@ export const AddAccountModal: React.FC<AddAccountModalProps> = ({
       setInitialBalance(formatInputNumber(accountToEdit.balance.toString()));
       setSelectedColor(accountToEdit.color || COLORS[0]);
       setIncludeInTotal(accountToEdit.includeInTotal !== false);
+      setHasGmf4x1000(!!accountToEdit.hasGmf4x1000);
     } else {
       setName('');
       setBankName('');
@@ -73,6 +75,7 @@ export const AddAccountModal: React.FC<AddAccountModalProps> = ({
       setInitialBalance('');
       setSelectedColor(COLORS[0]);
       setIncludeInTotal(true);
+      setHasGmf4x1000(false);
     }
   }, [accountToEdit, visible]);
 
@@ -96,6 +99,7 @@ export const AddAccountModal: React.FC<AddAccountModalProps> = ({
           color: selectedColor,
           icon: currentIcon,
           includeInTotal,
+          hasGmf4x1000,
         };
         await updateAccount(updated);
         showSuccess('¡Cuenta Actualizada!', 'Los cambios han sido guardados exitosamente.');
@@ -111,6 +115,7 @@ export const AddAccountModal: React.FC<AddAccountModalProps> = ({
           color: selectedColor,
           icon: currentIcon,
           includeInTotal,
+          hasGmf4x1000,
           isArchived: false,
           createdAt: new Date().toISOString(),
         };
@@ -224,6 +229,35 @@ export const AddAccountModal: React.FC<AddAccountModalProps> = ({
                 value={includeInTotal}
                 onValueChange={setIncludeInTotal}
                 trackColor={{ false: '#334155', true: '#10B981' }}
+                thumbColor="#FFFFFF"
+              />
+            </TouchableOpacity>
+
+            {/* Switch de Impuesto 4x1000 */}
+            <TouchableOpacity
+              style={styles.toggleCard}
+              onPress={() => setHasGmf4x1000(!hasGmf4x1000)}
+              activeOpacity={0.8}
+            >
+              <View style={styles.toggleTextCol}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                  <Text style={styles.toggleTitle}>Aplica Impuesto 4x1000 (GMF)</Text>
+                  {hasGmf4x1000 && (
+                    <View style={styles.gmfPill}>
+                      <Text style={styles.gmfPillText}>0.4%</Text>
+                    </View>
+                  )}
+                </View>
+                <Text style={styles.toggleSubtitle}>
+                  {hasGmf4x1000
+                    ? 'En cada gasto o transferencia de esta cuenta se descontará el 0.4% ($4 por cada $1.000).'
+                    : 'Cuenta exenta de 4x1000 (no se cobrará el gravamen).'}
+                </Text>
+              </View>
+              <Switch
+                value={hasGmf4x1000}
+                onValueChange={setHasGmf4x1000}
+                trackColor={{ false: '#334155', true: '#EF4444' }}
                 thumbColor="#FFFFFF"
               />
             </TouchableOpacity>
@@ -391,6 +425,19 @@ const styles = StyleSheet.create({
     fontSize: 11,
     marginTop: 2,
     lineHeight: 15,
+  },
+  gmfPill: {
+    backgroundColor: 'rgba(239, 68, 68, 0.2)',
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+    borderRadius: 4,
+    borderWidth: 1,
+    borderColor: 'rgba(239, 68, 68, 0.4)',
+  },
+  gmfPillText: {
+    color: '#F87171',
+    fontSize: 10,
+    fontWeight: 'bold',
   },
   saveBtn: {
     backgroundColor: '#6366F1',
