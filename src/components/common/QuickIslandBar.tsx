@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { parseBankNotification, ParsedBankMessage } from '../../utils/bankNotificationParser';
 import { useFinancial } from '../../context/FinancialContext';
+import { useAlert } from '../../context/AlertContext';
 import { formatCurrency } from '../../utils/formatters';
 import { Theme } from './Theme';
 import { CustomIcon } from './CustomIcon';
@@ -20,6 +21,7 @@ interface QuickIslandBarProps {
 
 export const QuickIslandBar: React.FC<QuickIslandBarProps> = ({ onOpenAddModal }) => {
   const { currency } = useFinancial();
+  const { showWarning } = useAlert();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [notificationText, setNotificationText] = useState('');
   const [parsedPreview, setParsedPreview] = useState<ParsedBankMessage | null>(null);
@@ -36,7 +38,7 @@ export const QuickIslandBar: React.FC<QuickIslandBarProps> = ({ onOpenAddModal }
 
   const handleApplyParsed = () => {
     if (!parsedPreview) {
-      Alert.alert('No se detectó información', 'Pega el texto completo del SMS o notificación bancaria.');
+      showWarning('No se detectó información', 'Pega el texto completo del SMS o notificación bancaria.');
       return;
     }
     setIsModalOpen(false);

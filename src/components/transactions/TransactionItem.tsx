@@ -1,7 +1,8 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Alert } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Transaction } from '../../types/finance';
 import { useFinancial } from '../../context/FinancialContext';
+import { useAlert } from '../../context/AlertContext';
 import { formatCurrency, formatRelativeDate } from '../../utils/formatters';
 import { Theme } from '../common/Theme';
 import { CustomIcon } from '../common/CustomIcon';
@@ -13,6 +14,7 @@ interface TransactionItemProps {
 
 export const TransactionItem: React.FC<TransactionItemProps> = ({ transaction, onPress }) => {
   const { categories, accounts, creditCards, deleteTransaction, currency } = useFinancial();
+  const { showConfirm, showSuccess } = useAlert();
 
   const category = categories.find((c) => c.id === transaction.categoryId);
   const account = accounts.find((a) => a.id === transaction.accountId);
@@ -66,34 +68,33 @@ export const TransactionItem: React.FC<TransactionItemProps> = ({ transaction, o
   };
 
   const handleLongPress = () => {
-    Alert.alert(
+    showConfirm(
       'Eliminar Transacción',
       `¿Deseas eliminar "${transaction.description}"? El saldo se actualizará automáticamente.`,
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        {
-          text: 'Eliminar',
-          style: 'destructive',
-          onPress: async () => {
-            await deleteTransaction(transaction.id);
-          },
-        },
-      ]
+      async () => {
+        await deleteTransaction(transaction.id);
+        showSuccess('Transacción Eliminada', 'El movimiento ha sido eliminado con éxito.');
+      },
+      'Eliminar',
+      'Cancelar',
+      true
     );
   };
+
+  const hasGmf = !!transaction.gmfAmount && transaction.gmfAmount > 0;
 
   return (
     <TouchableOpacity
       style={styles.container}
       onPress={onPress}
       onLongPress={handleLongPress}
-      activeOpacity={0.7}
+      activeOpacity={0.75}
     >
       {/* Icono de Categoría */}
       <View
         style={[
           styles.iconContainer,
-          { backgroundColor: (category?.color || '#6366F1') + '25' },
+          { backgroundColor: (category?.color || '#6366F1') + '20' },
         ]}
       >
         <CustomIcon
@@ -103,32 +104,40 @@ export const TransactionItem: React.FC<TransactionItemProps> = ({ transaction, o
         />
       </View>
 
-      {/* Textos Centrales */}
-      <View style={styles.textContainer}>
-        <Text style={styles.description} numberOfLines={1}>
-          {transaction.description}
-        </Text>
-        <View style={styles.metaRow}>
-          <Text style={styles.accountText}>{getAccountLabel()}</Text>
-          {!!transaction.gmfAmount && transaction.gmfAmount > 0 && (
-            <>
-              <Text style={styles.dot}>•</Text>
-              <Text style={{ color: '#F87171', fontSize: 10.5, fontWeight: '700' }}>
-                +4x1000: {formatCurrency(transaction.gmfAmount, currency)}
-              </Text>
-            </>
-          )}
-          <Text style={styles.dot}>•</Text>
-          <Text style={styles.dateText}>{formatRelativeDate(transaction.date)}</Text>
+      {/* Contenido Principal en Filas Estructuradas */}
+      <View style={styles.contentContainer}>
+        {/* Fila 1: Descripción Principal & Monto Principal (Predominantes) */}
+        <View style={styles.row}>
+          <Text style={styles.description} numberOfLines={1}>
+            {transaction.description}
+          </Text>
+          <Text style={[styles.amount, { color: getAmountColor() }]}>
+            {getAmountPrefix()}
+            {formatCurrency(transaction.amount, currency)}
+          </Text>
         </View>
-      </View>
 
-      {/* Monto */}
-      <View style={styles.amountContainer}>
-        <Text style={[styles.amount, { color: getAmountColor() }]}>
-          {getAmountPrefix()}
-          {formatCurrency(transaction.amount, currency)}
-        </Text>
+        {/* Fila 2 (Opcional): 4x1000 en su propia línea */}
+        {hasGmf && (
+          <View style={styles.gmfRow}>
+            <View style={styles.gmfPill}>
+              <Text style={styles.gmfPillText}>4x1000</Text>
+            </View>
+            <Text style={styles.gmfAmountText}>
+              -{formatCurrency(transaction.gmfAmount!, currency)}
+            </Text>
+          </View>
+        )}
+
+        {/* Fila 3: Cuenta & Fecha en letra pequeña */}
+        <View style={styles.row}>
+          <Text style={styles.accountText} numberOfLines={1}>
+            {getAccountLabel()}
+          </Text>
+          <Text style={styles.dateText}>
+            {formatRelativeDate(transaction.date)}
+          </Text>
+        </View>
       </View>
     </TouchableOpacity>
   );
@@ -154,39 +163,60 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginRight: 12,
   },
-  textContainer: {
+  contentContainer: {
     flex: 1,
-    marginRight: 8,
+    justifyContent: 'center',
+    gap: 3,
+  },
+  row: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
   description: {
     color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: '600',
+    fontSize: 14.5,
+    fontWeight: '700',
+    flex: 1,
+    marginRight: 8,
   },
-  metaRow: {
+  amount: {
+    fontSize: 14.5,
+    fontWeight: '700',
+  },
+  gmfRow: {
     flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    marginTop: 2,
+    paddingVertical: 1,
+  },
+  gmfPill: {
+    backgroundColor: 'rgba(239, 68, 68, 0.15)',
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+    borderRadius: 4,
+    borderWidth: 0.5,
+    borderColor: 'rgba(239, 68, 68, 0.3)',
+  },
+  gmfPillText: {
+    color: '#F87171',
+    fontSize: 10.5,
+    fontWeight: 'bold',
+  },
+  gmfAmountText: {
+    color: '#F87171',
+    fontSize: 11.5,
+    fontWeight: '600',
   },
   accountText: {
     color: '#94A3B8',
-    fontSize: 11,
+    fontSize: 11.5,
     fontWeight: '500',
-  },
-  dot: {
-    color: '#64748B',
-    marginHorizontal: 4,
-    fontSize: 11,
+    flex: 1,
+    marginRight: 8,
   },
   dateText: {
     color: '#64748B',
-    fontSize: 11,
-  },
-  amountContainer: {
-    alignItems: 'flex-end',
-  },
-  amount: {
-    fontSize: 14,
-    fontWeight: 'bold',
+    fontSize: 11.5,
   },
 });

@@ -257,22 +257,6 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
 
         await addTransaction(newTx);
 
-        // Si aplica 4x1000, registrar el movimiento de impuesto categorizado
-        if (isGmfEligible && gmfAmount > 0) {
-          const gmfTx: Transaction = {
-            id: `tx-gmf-${Date.now() + 1}`,
-            accountId: selectedAccountId,
-            type: 'expense',
-            amount: gmfAmount,
-            categoryId: 'cat-financial',
-            description: `Impuesto 4x1000 (${description.trim() || 'Traspaso'})`,
-            notes: `Gravamen Financiero (0.4%) sobre traspaso de ${formatCurrency(parsedAmount, currency)}`,
-            date: txDate,
-            createdAt: new Date(Date.now() + 50).toISOString(),
-          };
-          await addTransaction(gmfTx);
-        }
-
         const gmfNotice = isGmfEligible && gmfAmount > 0 ? ` (+${formatCurrency(gmfAmount, currency)} de 4x1000)` : '';
         showSuccess('¡Transferencia Registrada!', `Se transfirieron ${formatCurrency(parsedAmount, currency)}${gmfNotice} exitosamente.`);
       } else {
@@ -296,22 +280,6 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
         };
 
         await addTransaction(newTx);
-
-        // Si aplica 4x1000 en un gasto, registrar el impuesto categorizado
-        if (isGmfEligible && gmfAmount > 0) {
-          const gmfTx: Transaction = {
-            id: `tx-gmf-${Date.now() + 1}`,
-            accountId: selectedAccountId,
-            type: 'expense',
-            amount: gmfAmount,
-            categoryId: 'cat-financial',
-            description: `Impuesto 4x1000 (${description.trim()})`,
-            notes: `Gravamen Financiero (0.4%) sobre gasto de ${formatCurrency(parsedAmount, currency)}`,
-            date: txDate,
-            createdAt: new Date(Date.now() + 50).toISOString(),
-          };
-          await addTransaction(gmfTx);
-        }
 
         const gmfNotice = isGmfEligible && gmfAmount > 0 ? ` (Incluye ${formatCurrency(gmfAmount, currency)} de 4x1000)` : '';
         showSuccess('¡Movimiento Registrado!', `Tus finanzas se actualizaron con éxito${gmfNotice}.`);
