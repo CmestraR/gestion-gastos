@@ -47,16 +47,17 @@ export const AccountsScreen: React.FC = () => {
       <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
         {/* Header */}
         <View style={styles.header}>
-          <View>
+          <View style={styles.headerTitleCol}>
             <Text style={styles.tag}>MIS FONDOS & DEUDAS</Text>
-            <Text style={styles.title}>Cuentas & Obligaciones</Text>
+            <Text style={styles.title} numberOfLines={1}>Cuentas & Deudas</Text>
           </View>
           <TouchableOpacity
             style={styles.addBtn}
             onPress={handleOpenCreate}
+            activeOpacity={0.8}
           >
-            <CustomIcon name="Plus" size={16} color="#FFFFFF" />
-            <Text style={styles.addBtnText}>Nueva Cuenta</Text>
+            <CustomIcon name="Plus" size={15} color="#FFFFFF" />
+            <Text style={styles.addBtnText}>Nueva</Text>
           </TouchableOpacity>
         </View>
 
@@ -183,6 +184,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 14,
   },
+  headerTitleCol: {
+    flex: 1,
+    marginRight: 10,
+  },
   tag: {
     color: '#818CF8',
     fontSize: 11,
@@ -191,7 +196,7 @@ const styles = StyleSheet.create({
   },
   title: {
     color: '#FFFFFF',
-    fontSize: 22,
+    fontSize: 21,
     fontWeight: 'bold',
     marginTop: 2,
   },

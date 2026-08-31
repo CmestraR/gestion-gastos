@@ -10,8 +10,9 @@ import {
 } from 'react-native';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { FinancialProvider, useFinancial } from './src/context/FinancialContext';
-import { AlertProvider } from './src/context/AlertContext';
+import { AlertProvider, useAlert } from './src/context/AlertContext';
 import { NotificationService } from './src/utils/notificationService';
+import { UpdateService } from './src/utils/updateService';
 import { DashboardScreen } from './src/screens/DashboardScreen';
 import { CardsScreen } from './src/screens/CardsScreen';
 import { AccountsScreen } from './src/screens/AccountsScreen';
@@ -23,6 +24,7 @@ import { CustomIcon } from './src/components/common/CustomIcon';
 
 function MainApp() {
   const { isLoading, creditCards } = useFinancial();
+  const { showConfirm, showSuccess } = useAlert();
   const insets = useSafeAreaInsets();
   const [activeTab, setActiveTab] = useState<'dashboard' | 'cards' | 'accounts' | 'transactions' | 'settings'>('dashboard');
   const [filterAccountId, setFilterAccountId] = useState<string | null>(null);
@@ -34,6 +36,23 @@ function MainApp() {
       NotificationService.scheduleCardReminders(creditCards);
     }
   }, [creditCards]);
+
+  useEffect(() => {
+    if (!isLoading) {
+      UpdateService.checkOnStartupQuietly(() => {
+        showConfirm(
+          '¡Actualización Disponible!',
+          'Se ha publicado una nueva versión con mejoras para la aplicación. ¿Deseas descargarla y aplicarla ahora?',
+          async () => {
+            showSuccess('Descargando...', 'Aplicando actualización instantánea...');
+            await UpdateService.fetchAndApplyUpdate();
+          },
+          'Actualizar Ahora',
+          'Más Tarde'
+        );
+      });
+    }
+  }, [isLoading]);
 
   // Espacio seguro superior e inferior para Android (POCO / Notch / Isla Dinámica)
   const topSafePadding = Math.max(

@@ -96,11 +96,16 @@ export const TransactionsScreen: React.FC<TransactionsScreenProps> = ({
     let expense = 0;
 
     for (const tx of filteredTransactions) {
-      if (tx.type === 'income') income += tx.amount;
-      if (tx.type === 'expense' || tx.type === 'card_purchase') expense += tx.amount;
+      if (tx.type === 'income') {
+        income += tx.amount;
+      } else if (tx.type === 'expense' || tx.type === 'card_purchase') {
+        expense += (tx.amount + (tx.gmfAmount || 0));
+      } else if (tx.type === 'transfer' && tx.gmfAmount) {
+        expense += tx.gmfAmount;
+      }
     }
 
-    return { income, expense, balance: income - expense };
+    return { income, expense, balance: +(income - expense).toFixed(2) };
   }, [filteredTransactions]);
 
   // Datos para la vista gráfica por categorías
@@ -110,7 +115,9 @@ export const TransactionsScreen: React.FC<TransactionsScreenProps> = ({
 
     filteredTransactions.forEach((tx) => {
       if (tx.type === 'expense' || tx.type === 'card_purchase') {
-        expenseByCategory[tx.categoryId] = (expenseByCategory[tx.categoryId] || 0) + tx.amount;
+        expenseByCategory[tx.categoryId] = (expenseByCategory[tx.categoryId] || 0) + tx.amount + (tx.gmfAmount || 0);
+      } else if (tx.type === 'transfer' && tx.gmfAmount) {
+        expenseByCategory['cat-financial'] = (expenseByCategory['cat-financial'] || 0) + tx.gmfAmount;
       } else if (tx.type === 'income') {
         incomeByCategory[tx.categoryId] = (incomeByCategory[tx.categoryId] || 0) + tx.amount;
       }

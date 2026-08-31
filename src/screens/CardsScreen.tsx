@@ -16,6 +16,9 @@ import { CustomIcon } from '../components/common/CustomIcon';
 import { CreditCardVisual } from '../components/cards/CreditCardVisual';
 import { AddCreditCardModal } from '../components/cards/AddCreditCardModal';
 import { CardStatementModal } from '../components/cards/CardStatementModal';
+import { PayCardModal } from '../components/cards/PayCardModal';
+import { ReconcileCardModal } from '../components/cards/ReconcileCardModal';
+import { ManualStatementModal } from '../components/cards/ManualStatementModal';
 import { InstallmentAmortizationModal } from '../components/cards/InstallmentAmortizationModal';
 import { AddTransactionModal } from '../components/transactions/AddTransactionModal';
 import { CreditCard, CardStatementSummary, CardPurchase } from '../types/finance';
@@ -32,9 +35,20 @@ export const CardsScreen: React.FC = () => {
 
   const [addCardModalVisible, setAddCardModalVisible] = useState(false);
   const [selectedCardToEdit, setSelectedCardToEdit] = useState<CreditCard | null>(null);
+
   const [statementModalVisible, setStatementModalVisible] = useState(false);
   const [selectedCardForStatement, setSelectedCardForStatement] = useState<CreditCard | null>(null);
   const [selectedStatement, setSelectedStatement] = useState<CardStatementSummary | null>(null);
+
+  const [payModalVisible, setPayModalVisible] = useState(false);
+  const [selectedCardForPay, setSelectedCardForPay] = useState<CreditCard | null>(null);
+  const [selectedStatementForPay, setSelectedStatementForPay] = useState<CardStatementSummary | null>(null);
+
+  const [reconcileModalVisible, setReconcileModalVisible] = useState(false);
+  const [selectedCardForReconcile, setSelectedCardForReconcile] = useState<CreditCard | null>(null);
+
+  const [manualStatementModalVisible, setManualStatementModalVisible] = useState(false);
+  const [selectedCardForManual, setSelectedCardForManual] = useState<CreditCard | null>(null);
 
   const [amortizationModalVisible, setAmortizationModalVisible] = useState(false);
   const [selectedPurchase, setSelectedPurchase] = useState<CardPurchase | null>(null);
@@ -60,12 +74,12 @@ export const CardsScreen: React.FC = () => {
   const handleDeleteCard = (card: CreditCard) => {
     showConfirm(
       'Eliminar Tarjeta',
-      `¿Estás seguro de que deseas eliminar la tarjeta "${card.name}" (${card.bankName})? Se eliminarán todas sus cuotas, extractos y compras vinculadas.`,
+      `¿Estás seguro de que deseas eliminar la tarjeta "${card.name}" (${card.bankName})? Si tiene compras o movimientos registrados pasará a estado archivado para preservar tu integridad contable.`,
       async () => {
         await deleteCreditCard(card.id);
-        showSuccess('Tarjeta Eliminada', `La tarjeta ${card.name} fue eliminada correctamente.`);
+        showSuccess('Tarjeta Procesada', `La tarjeta ${card.name} fue gestionada correctamente.`);
       },
-      'Eliminar',
+      'Eliminar / Archivar',
       'Cancelar',
       true
     );
@@ -76,6 +90,25 @@ export const CardsScreen: React.FC = () => {
     setSelectedCardForStatement(card);
     setSelectedStatement(stmt);
     setStatementModalVisible(true);
+  };
+
+  const handleOpenPay = (card: CreditCard) => {
+    const stmt = cardStatements.find((s) => s.cardId === card.id) || null;
+    setSelectedCardForPay(card);
+    setSelectedStatementForPay(stmt);
+    setPayModalVisible(true);
+  };
+
+  const handleOpenReconcile = (card: CreditCard) => {
+    setSelectedCardForReconcile(card);
+    setReconcileModalVisible(true);
+  };
+
+  const handleOpenManualStatement = (card: CreditCard) => {
+    const stmt = cardStatements.find((s) => s.cardId === card.id) || null;
+    setSelectedCardForManual(card);
+    setSelectedStatement(stmt);
+    setManualStatementModalVisible(true);
   };
 
   const handleOpenAmortization = (purchase: CardPurchase) => {
@@ -109,7 +142,7 @@ export const CardsScreen: React.FC = () => {
 
           <View style={styles.statsGrid}>
             <View style={styles.statBox}>
-              <Text style={styles.statLabel}>Total a Pagar este Mes</Text>
+              <Text style={styles.statLabel}>Total Facturado Pendiente</Text>
               <Text style={[styles.statValue, { color: '#F59E0B' }]}>
                 {formatCurrency(totalPaymentThisMonth, currency)}
               </Text>
@@ -160,7 +193,7 @@ export const CardsScreen: React.FC = () => {
             <CustomIcon name="CreditCard" size={36} color="#64748B" />
             <Text style={styles.emptyTitle}>Sin tarjetas registradas</Text>
             <Text style={styles.emptyText}>
-              Agrega tus tarjetas de crédito para simular cuotas, amortización y fechas de corte.
+              Agrega tus tarjetas de crédito para simular cuotas, imputación de pagos, conciliación y extractos.
             </Text>
             <TouchableOpacity
               style={styles.emptyBtn}
@@ -174,33 +207,94 @@ export const CardsScreen: React.FC = () => {
             const stmt = cardStatements.find((s) => s.cardId === card.id);
             const cardPurchases = activePurchases.filter((p) => p.cardId === card.id);
 
+            // Estado del extracto
+            let statusBadge = { label: 'AL DÍA', color: '#10B981', bg: 'rgba(16, 185, 129, 0.15)' };
+            if (stmt?.statementStatus === 'paid') {
+              statusBadge = { label: 'EXTRACTO PAGADO', color: '#10B981', bg: 'rgba(16, 185, 129, 0.2)' };
+            } else if (stmt?.statementStatus === 'minimum_covered') {
+              statusBadge = { label: 'MÍNIMO CUBIERTO', color: '#38BDF8', bg: 'rgba(56, 189, 248, 0.2)' };
+            } else if (stmt?.statementStatus === 'overdue') {
+              statusBadge = { label: 'VENCIDO', color: '#EF4444', bg: 'rgba(239, 68, 68, 0.2)' };
+            } else if (stmt?.statementStatus === 'partially_paid') {
+              statusBadge = { label: 'ABONO PARCIAL', color: '#F59E0B', bg: 'rgba(245, 158, 11, 0.2)' };
+            }
+
             return (
               <View key={card.id} style={styles.cardWrapper}>
+                {/* Header superior de la tarjeta con emisor y acciones */}
                 <View style={styles.cardHeaderActions}>
-                  <TouchableOpacity
-                    style={styles.editCardBtn}
-                    onPress={() => handleOpenEditCard(card)}
-                  >
-                    <CustomIcon name="Edit3" size={13} color="#CBD5E1" />
-                    <Text style={styles.editCardBtnText}>Editar</Text>
-                  </TouchableOpacity>
+                  <View style={[styles.statusBadgePill, { backgroundColor: statusBadge.bg }]}>
+                    <Text style={[styles.statusBadgeText, { color: statusBadge.color }]}>
+                      {statusBadge.label}
+                    </Text>
+                  </View>
 
-                  <TouchableOpacity
-                    style={styles.deleteCardBtn}
-                    onPress={() => handleDeleteCard(card)}
-                  >
-                    <CustomIcon name="Trash2" size={13} color="#EF4444" />
-                    <Text style={styles.deleteCardBtnText}>Eliminar</Text>
-                  </TouchableOpacity>
+                  <View style={{ flexDirection: 'row', gap: 8 }}>
+                    <TouchableOpacity
+                      style={styles.editCardBtn}
+                      onPress={() => handleOpenEditCard(card)}
+                    >
+                      <CustomIcon name="Edit3" size={13} color="#CBD5E1" />
+                      <Text style={styles.editCardBtnText}>Editar</Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                      style={styles.deleteCardBtn}
+                      onPress={() => handleDeleteCard(card)}
+                    >
+                      <CustomIcon name="Trash2" size={13} color="#EF4444" />
+                      <Text style={styles.deleteCardBtnText}>Eliminar</Text>
+                    </TouchableOpacity>
+                  </View>
                 </View>
 
+                {/* Componente Visual de Tarjeta */}
                 <CreditCardVisual
                   card={card}
                   statement={stmt}
                   onViewStatement={() => handleOpenStatement(card)}
                   onAddPurchase={() => setAddPurchaseModalVisible(true)}
-                  onPayCard={() => handleOpenStatement(card)}
+                  onPayCard={() => handleOpenPay(card)}
                 />
+
+                {/* Barra de Acciones de Tarjeta */}
+                <View style={styles.cardActionsBar}>
+                  <TouchableOpacity
+                    style={[styles.cardActionBtn, styles.cardActionBtnPrimary]}
+                    onPress={() => handleOpenPay(card)}
+                    activeOpacity={0.7}
+                  >
+                    <CustomIcon name="CreditCard" size={13} color="#FFFFFF" />
+                    <Text style={styles.cardActionBtnTextPrimary}>Pagar</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={styles.cardActionBtn}
+                    onPress={() => handleOpenStatement(card)}
+                    activeOpacity={0.7}
+                  >
+                    <CustomIcon name="FileText" size={13} color="#CBD5E1" />
+                    <Text style={styles.cardActionBtnText}>Extracto</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={styles.cardActionBtn}
+                    onPress={() => handleOpenReconcile(card)}
+                    activeOpacity={0.7}
+                  >
+                    <CustomIcon name="ShieldCheck" size={13} color="#CBD5E1" />
+                    <Text style={styles.cardActionBtnText}>Conciliar</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={styles.cardActionBtn}
+                    onPress={() => handleOpenManualStatement(card)}
+                    activeOpacity={0.7}
+                  >
+                    <CustomIcon name="Plus" size={13} color="#CBD5E1" />
+                    <Text style={styles.cardActionBtnText}>+ Cifras</Text>
+                  </TouchableOpacity>
+                </View>
 
                 {/* Compras a cuotas específicas de esta tarjeta */}
                 {cardPurchases.length > 0 && (
@@ -247,6 +341,36 @@ export const CardsScreen: React.FC = () => {
         onClose={() => {
           setAddCardModalVisible(false);
           setSelectedCardToEdit(null);
+        }}
+      />
+
+      <PayCardModal
+        visible={payModalVisible}
+        card={selectedCardForPay}
+        statementSummary={selectedStatementForPay}
+        onClose={() => {
+          setPayModalVisible(false);
+          setSelectedCardForPay(null);
+        }}
+      />
+
+      <ReconcileCardModal
+        visible={reconcileModalVisible}
+        card={selectedCardForReconcile}
+        statementSummary={selectedStatement}
+        onClose={() => {
+          setReconcileModalVisible(false);
+          setSelectedCardForReconcile(null);
+        }}
+      />
+
+      <ManualStatementModal
+        visible={manualStatementModalVisible}
+        card={selectedCardForManual}
+        statementSummary={selectedStatement}
+        onClose={() => {
+          setManualStatementModalVisible(false);
+          setSelectedCardForManual(null);
         }}
       />
 
@@ -398,10 +522,19 @@ const styles = StyleSheet.create({
   },
   cardHeaderActions: {
     flexDirection: 'row',
-    justifyContent: 'flex-end',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    gap: 8,
-    marginBottom: 6,
+    marginBottom: 8,
+  },
+  statusBadgePill: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+  },
+  statusBadgeText: {
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 0.5,
   },
   editCardBtn: {
     flexDirection: 'row',
@@ -432,6 +565,38 @@ const styles = StyleSheet.create({
   },
   deleteCardBtnText: {
     color: '#EF4444',
+    fontSize: 11.5,
+    fontWeight: 'bold',
+  },
+  cardActionsBar: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 8,
+    marginBottom: 10,
+  },
+  cardActionBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 5,
+    backgroundColor: Theme.colors.surfaceElevated,
+    borderRadius: 10,
+    paddingVertical: 8,
+    borderWidth: 1,
+    borderColor: '#334155',
+  },
+  cardActionBtnPrimary: {
+    backgroundColor: Theme.colors.primary,
+    borderColor: Theme.colors.primary,
+  },
+  cardActionBtnText: {
+    color: '#CBD5E1',
+    fontSize: 11.5,
+    fontWeight: '600',
+  },
+  cardActionBtnTextPrimary: {
+    color: '#FFFFFF',
     fontSize: 11.5,
     fontWeight: 'bold',
   },
