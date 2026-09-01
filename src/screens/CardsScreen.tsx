@@ -298,8 +298,10 @@ export const CardsScreen: React.FC = () => {
                     onPress={() => handleOpenPay(card)}
                     activeOpacity={0.7}
                   >
-                    <CustomIcon name="CreditCard" size={13} color="#FFFFFF" />
-                    <Text style={styles.cardActionBtnTextPrimary}>Pagar</Text>
+                    <CustomIcon name="CreditCard" size={12} color="#FFFFFF" />
+                    <Text style={styles.cardActionBtnTextPrimary} numberOfLines={1}>
+                      Pagar
+                    </Text>
                   </TouchableOpacity>
 
                   <TouchableOpacity
@@ -307,8 +309,10 @@ export const CardsScreen: React.FC = () => {
                     onPress={() => handleOpenStatement(card)}
                     activeOpacity={0.7}
                   >
-                    <CustomIcon name="FileText" size={13} color="#CBD5E1" />
-                    <Text style={styles.cardActionBtnText}>Extracto</Text>
+                    <CustomIcon name="FileText" size={12} color="#CBD5E1" />
+                    <Text style={styles.cardActionBtnText} numberOfLines={1}>
+                      Extracto
+                    </Text>
                   </TouchableOpacity>
 
                   <TouchableOpacity
@@ -316,8 +320,10 @@ export const CardsScreen: React.FC = () => {
                     onPress={() => handleOpenReconcile(card)}
                     activeOpacity={0.7}
                   >
-                    <CustomIcon name="ShieldCheck" size={13} color="#CBD5E1" />
-                    <Text style={styles.cardActionBtnText}>Conciliar</Text>
+                    <CustomIcon name="ShieldCheck" size={12} color="#CBD5E1" />
+                    <Text style={styles.cardActionBtnText} numberOfLines={1}>
+                      Conciliar
+                    </Text>
                   </TouchableOpacity>
 
                   {!stmt?.hasOpeningBalance ? (
@@ -326,9 +332,12 @@ export const CardsScreen: React.FC = () => {
                       onPress={() => handleOpenManualStatement(card, 'opening_balance')}
                       activeOpacity={0.7}
                     >
-                      <CustomIcon name="Sliders" size={13} color="#818CF8" />
-                      <Text style={[styles.cardActionBtnText, { color: '#818CF8', fontWeight: 'bold' }]}>
-                        Saldo Inicial
+                      <CustomIcon name="Sliders" size={12} color="#818CF8" />
+                      <Text
+                        style={[styles.cardActionBtnText, { color: '#818CF8', fontWeight: 'bold' }]}
+                        numberOfLines={1}
+                      >
+                        Apertura
                       </Text>
                     </TouchableOpacity>
                   ) : (
@@ -337,8 +346,10 @@ export const CardsScreen: React.FC = () => {
                       onPress={() => handleOpenManualStatement(card, 'statement')}
                       activeOpacity={0.7}
                     >
-                      <CustomIcon name="Plus" size={13} color="#CBD5E1" />
-                      <Text style={styles.cardActionBtnText}>+ Cifras</Text>
+                      <CustomIcon name="Plus" size={12} color="#CBD5E1" />
+                      <Text style={styles.cardActionBtnText} numberOfLines={1}>
+                        + Cifras
+                      </Text>
                     </TouchableOpacity>
                   )}
                 </View>
@@ -621,7 +632,7 @@ const styles = StyleSheet.create({
   },
   cardActionsBar: {
     flexDirection: 'row',
-    gap: 8,
+    gap: 6,
     marginTop: 8,
     marginBottom: 10,
   },
@@ -630,10 +641,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 5,
+    gap: 3,
     backgroundColor: Theme.colors.surfaceElevated,
     borderRadius: 10,
     paddingVertical: 8,
+    paddingHorizontal: 2,
     borderWidth: 1,
     borderColor: '#334155',
   },
@@ -647,12 +659,12 @@ const styles = StyleSheet.create({
   },
   cardActionBtnText: {
     color: '#CBD5E1',
-    fontSize: 11.5,
+    fontSize: 10.5,
     fontWeight: '600',
   },
   cardActionBtnTextPrimary: {
     color: '#FFFFFF',
-    fontSize: 11.5,
+    fontSize: 10.5,
     fontWeight: 'bold',
   },
   openingBalanceBanner: {
