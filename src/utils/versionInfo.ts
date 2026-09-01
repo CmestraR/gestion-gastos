@@ -12,15 +12,15 @@ export interface ReleaseInfo {
 }
 
 export const APP_RELEASE_INFO: ReleaseInfo = {
-  version: '2.0.0',
-  codeName: 'Fase 2.2 — Motor de Tarjetas & Saldo Actual',
+  version: '2.0.1',
+  codeName: 'Fase 2.2 — Hotfix Migraciones SQLite & Saldo Actual',
   buildDate: '1 Sep 2026',
   channel: 'Producción / Preview',
   highlights: [
     'Motor contable de Tarjetas de Crédito, Extractos y Cuotas',
     '3 Saldos financieros exactos: Deuda Total, Facturada y No Facturada',
     'Configurar Saldo Actual para tarjetas previas a la app',
+    'Migraciones SQLite idempotentes y automáticas para bases existentes',
     'Conciliación Bancaria con trazabilidad individual y reversión',
-    'Imputación de pagos según políticas de emisor (Nu, Bancolombia, RappiCard)',
   ],
 };
