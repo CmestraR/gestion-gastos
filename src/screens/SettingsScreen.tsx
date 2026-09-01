@@ -18,6 +18,7 @@ import { Theme } from '../components/common/Theme';
 import { CustomIcon } from '../components/common/CustomIcon';
 import { ManageCategoriesModal } from '../components/categories/ManageCategoriesModal';
 import { UpdateService } from '../utils/updateService';
+import { APP_RELEASE_INFO } from '../utils/versionInfo';
 import { ActivityIndicator } from 'react-native';
 
 const CURRENCIES = [
@@ -236,9 +237,31 @@ export const SettingsScreen: React.FC = () => {
 
           <View style={styles.divider} />
 
+          {/* Tarjeta de Novedades de la Versión Activa */}
+          <View style={styles.releaseBadgeCard}>
+            <View style={styles.releaseHeaderRow}>
+              <View style={styles.releasePill}>
+                <Text style={styles.releasePillText}>v{APP_RELEASE_INFO.version}</Text>
+              </View>
+              <Text style={styles.releaseDateText}>{APP_RELEASE_INFO.buildDate}</Text>
+            </View>
+            <Text style={styles.releaseCodeName}>{APP_RELEASE_INFO.codeName}</Text>
+            
+            <View style={styles.releaseHighlightsList}>
+              {APP_RELEASE_INFO.highlights.map((item, idx) => (
+                <View key={idx} style={styles.highlightItem}>
+                  <CustomIcon name="CheckCircle2" size={12} color="#10B981" />
+                  <Text style={styles.highlightText}>{item}</Text>
+                </View>
+              ))}
+            </View>
+          </View>
+
+          <View style={styles.divider} />
+
           <View style={styles.infoRow}>
             <Text style={styles.infoLabel}>Versión de Aplicación</Text>
-            <Text style={styles.infoValue}>v{appInfo.appVersion}</Text>
+            <Text style={styles.infoValue}>v{APP_RELEASE_INFO.version} (v{appInfo.appVersion})</Text>
           </View>
           <View style={styles.infoRow}>
             <Text style={styles.infoLabel}>Compilación (Build)</Text>
@@ -250,7 +273,9 @@ export const SettingsScreen: React.FC = () => {
           </View>
           <View style={styles.infoRow}>
             <Text style={styles.infoLabel}>Canal EAS</Text>
-            <Text style={styles.infoValue}>{appInfo.channel.toUpperCase()}</Text>
+            <Text style={[styles.infoValue, { color: '#818CF8', fontWeight: 'bold' }]}>
+              {appInfo.channel.toUpperCase()}
+            </Text>
           </View>
           <View style={styles.infoRow}>
             <Text style={styles.infoLabel}>Revisión OTA</Text>
@@ -503,5 +528,56 @@ const styles = StyleSheet.create({
     height: 1,
     backgroundColor: 'rgba(255, 255, 255, 0.08)',
     marginVertical: 6,
+  },
+  releaseBadgeCard: {
+    backgroundColor: 'rgba(99, 102, 241, 0.08)',
+    borderRadius: 14,
+    padding: 12,
+    marginVertical: 4,
+    borderWidth: 1,
+    borderColor: 'rgba(99, 102, 241, 0.25)',
+  },
+  releaseHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 6,
+  },
+  releasePill: {
+    backgroundColor: '#6366F1',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+  },
+  releasePillText: {
+    color: '#FFFFFF',
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 0.5,
+  },
+  releaseDateText: {
+    color: '#94A3B8',
+    fontSize: 11,
+    fontWeight: '500',
+  },
+  releaseCodeName: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: 'bold',
+    marginBottom: 8,
+  },
+  releaseHighlightsList: {
+    gap: 5,
+  },
+  highlightItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  highlightText: {
+    color: '#CBD5E1',
+    fontSize: 11,
+    flex: 1,
+    lineHeight: 15,
   },
 });

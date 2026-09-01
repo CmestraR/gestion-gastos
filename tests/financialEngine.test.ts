@@ -1095,6 +1095,13 @@ describe('BATERÍA COMPLETA DE PRUEBAS — MOTOR FINANCIERO Y TARJETAS DE CRÉDI
       const card = await CardRepository.getById('card-nu-2');
       assert.strictEqual(card?.availableLimit, 2400000);
 
+      // Verificación de hasOpeningBalance en repositorio y resumen
+      const hasOpening = await StatementRepository.hasOpeningBalance('card-nu-2');
+      assert.strictEqual(hasOpening, true);
+
+      const summary = await CardRepository.getCardStatementSummary(card!);
+      assert.strictEqual(summary.hasOpeningBalance, true);
+
       // Transacción registrada en libro mayor
       const txs = (await testDb.db.getAllAsync(
         "SELECT * FROM transactions WHERE card_id = ? AND type = 'card_opening_balance'",
@@ -1116,6 +1123,8 @@ describe('BATERÍA COMPLETA DE PRUEBAS — MOTOR FINANCIERO Y TARJETAS DE CRÉDI
         principalTotal: 400000,
         interestAndFeesTotal: 20000,
       });
+
+      assert.strictEqual(await StatementRepository.hasOpeningBalance('card-nu-2'), true);
 
       await assert.rejects(
         () =>

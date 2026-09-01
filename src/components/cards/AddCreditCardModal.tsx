@@ -21,6 +21,7 @@ interface AddCreditCardModalProps {
   visible: boolean;
   onClose: () => void;
   cardToEdit?: CreditCard | null;
+  onCardCreated?: (card: CreditCard) => void;
 }
 
 const CARD_BRANDS: { brand: CardBrand; label: string }[] = [
@@ -41,6 +42,7 @@ export const AddCreditCardModal: React.FC<AddCreditCardModalProps> = ({
   visible,
   onClose,
   cardToEdit,
+  onCardCreated,
 }) => {
   const { addCreditCard, updateCreditCard, deleteCreditCard, currency } = useFinancial();
   const { showSuccess, showWarning, showConfirm, showError } = useAlert();
@@ -173,7 +175,13 @@ export const AddCreditCardModal: React.FC<AddCreditCardModalProps> = ({
           createdAt: new Date().toISOString(),
         };
         await addCreditCard(newCard);
-        showSuccess('¡Tarjeta Agregada!', 'Tu nueva tarjeta de crédito ha sido registrada.');
+        onClose();
+        if (onCardCreated) {
+          onCardCreated(newCard);
+        } else {
+          showSuccess('¡Tarjeta Agregada!', 'Tu nueva tarjeta de crédito ha sido registrada.');
+        }
+        return;
       }
       onClose();
     } catch (e) {

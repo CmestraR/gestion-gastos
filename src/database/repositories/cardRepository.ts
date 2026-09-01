@@ -863,6 +863,7 @@ export const CardRepository = {
       availableCredit: card.availableLimit,
       creditLimit: card.creditLimit,
       hasStatementSnapshot: !!latestStatement,
+      hasOpeningBalance: await StatementRepository.hasOpeningBalance(card.id),
     };
   },
 };

@@ -21,6 +21,7 @@ interface ManualStatementModalProps {
   visible: boolean;
   card: CreditCard | null;
   statementSummary?: CardStatementSummary | null;
+  initialMode?: 'opening_balance' | 'statement';
   onClose: () => void;
 }
 
@@ -28,6 +29,7 @@ export const ManualStatementModal: React.FC<ManualStatementModalProps> = ({
   visible,
   card,
   statementSummary,
+  initialMode,
   onClose,
 }) => {
   const { saveStatementSnapshot, createOpeningBalance, currency } = useFinancial();
@@ -57,22 +59,34 @@ export const ManualStatementModal: React.FC<ManualStatementModalProps> = ({
       setCurrentInterest('0');
       setHandlingFee(formatInputNumber(card.handlingFee ? card.handlingFee.toString() : '0'));
       setCollectionFee('0');
-      setIsOpeningBalanceMode(!statementSummary?.hasStatementSnapshot);
-      setNotes('Extracto registrado manualmente / Saldo de apertura');
+
+      // Si initialMode está definido, respetarlo; de lo contrario determinar según si ya tiene opening balance
+      if (initialMode) {
+        setIsOpeningBalanceMode(initialMode === 'opening_balance');
+      } else {
+        setIsOpeningBalanceMode(!statementSummary?.hasOpeningBalance && !statementSummary?.hasStatementSnapshot);
+      }
+
+      setNotes('');
     }
-  }, [visible, card, statementSummary]);
+  }, [visible, card, statementSummary, initialMode]);
+
+  // Cálculos dinámicos en vivo
+  const parsedTotal = parseInputNumber(totalBalance);
+  const parsedInterest = parseInputNumber(currentInterest);
+  const parsedHandling = parseInputNumber(handlingFee);
+  const parsedCollection = parseInputNumber(collectionFee);
+  const nonPrincipalCalc = parsedInterest + parsedHandling + parsedCollection;
+  const principalCalc = Math.max(0, parsedTotal - nonPrincipalCalc);
+  const resultingAvailable = card ? Math.max(0, card.creditLimit - principalCalc) : 0;
 
   const handleSave = async () => {
     if (!card) return;
 
-    const parsedTotal = parseInputNumber(totalBalance);
     const parsedMin = parseInputNumber(minimumPayment);
-    const parsedInterest = parseInputNumber(currentInterest);
-    const parsedHandling = parseInputNumber(handlingFee);
-    const parsedCollection = parseInputNumber(collectionFee);
 
     if (parsedTotal <= 0) {
-      showWarning('Saldo Requerido', 'El saldo total del extracto debe ser mayor a cero.');
+      showWarning('Saldo Requerido', 'El saldo total debe ser mayor a cero.');
       return;
     }
 
@@ -102,6 +116,11 @@ export const ManualStatementModal: React.FC<ManualStatementModalProps> = ({
           minimumPayment: parsedMin,
           notes: notes.trim() || undefined,
         });
+
+        showSuccess(
+          '¡Saldo Configurado!',
+          `Se configuró el saldo actual para ${card.name} exitosamente con ${formatCurrency(parsedTotal, currency)} de saldo inicial.`
+        );
       } else {
         await saveStatementSnapshot({
           cardId: card.id,
@@ -126,15 +145,19 @@ export const ManualStatementModal: React.FC<ManualStatementModalProps> = ({
           isOpeningBalance: false,
           notes: notes.trim() || undefined,
         });
+
+        showSuccess(
+          '¡Extracto Guardado!',
+          `Se registró el extracto oficial de ${card.name} con un saldo total de ${formatCurrency(parsedTotal, currency)}.`
+        );
       }
 
-      showSuccess(
-        '¡Extracto Guardado!',
-        `Se registró el extracto oficial de ${card.name} con un saldo total de ${formatCurrency(parsedTotal, currency)}.`
-      );
       onClose();
     } catch (e: any) {
-      showError('Error al Guardar Extracto', e.message || 'No se pudo registrar el extracto.');
+      showError(
+        isOpeningBalanceMode ? 'Error al Configurar Saldo' : 'Error al Guardar Extracto',
+        e.message || 'No se pudo procesar la solicitud.'
+      );
     }
   };
 
@@ -154,8 +177,12 @@ export const ManualStatementModal: React.FC<ManualStatementModalProps> = ({
           {/* Header */}
           <View style={styles.header}>
             <View>
-              <Text style={styles.tag}>EXTRACTO OFICIAL / APERTURA</Text>
-              <Text style={styles.title}>Registrar Extracto</Text>
+              <Text style={styles.tag}>
+                {isOpeningBalanceMode ? 'CONFIGURAR SALDO ACTUAL' : 'EXTRACTO OFICIAL'}
+              </Text>
+              <Text style={styles.title}>
+                {isOpeningBalanceMode ? 'Configurar Saldo Actual' : 'Registrar Extracto'}
+              </Text>
             </View>
             <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
               <CustomIcon name="X" size={20} color="#94A3B8" />
@@ -165,14 +192,24 @@ export const ManualStatementModal: React.FC<ManualStatementModalProps> = ({
           <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 }}>
             {/* Info Banner */}
             <View style={styles.infoBanner}>
-              <CustomIcon name="Info" size={16} color="#818CF8" />
+              <CustomIcon
+                name={isOpeningBalanceMode ? 'Sliders' : 'Info'}
+                size={16}
+                color="#818CF8"
+              />
               <Text style={styles.infoText}>
-                Ingresa las cifras oficiales de tu extracto bancario para congelar el saldo del corte y habilitar el control de pagos exactos.
+                {isOpeningBalanceMode
+                  ? 'Usa esta opción si ya utilizabas esta tarjeta antes de agregarla a la app. Ingresa el saldo total pendiente de tu extracto más reciente para inicializar tu cupo y deudas de forma exacta.'
+                  : 'Ingresa las cifras oficiales de tu extracto bancario para congelar el saldo del corte y habilitar el control de pagos exactos.'}
               </Text>
             </View>
 
-            {/* Saldo Total del Extracto */}
-            <Text style={styles.inputLabel}>Saldo Total a Pagar del Extracto ($)</Text>
+            {/* Saldo Total */}
+            <Text style={styles.inputLabel}>
+              {isOpeningBalanceMode
+                ? 'Saldo Total Actual / Pendiente ($)'
+                : 'Saldo Total a Pagar del Extracto ($)'}
+            </Text>
             <TextInput
               style={styles.input}
               placeholder="0"
@@ -243,11 +280,36 @@ export const ManualStatementModal: React.FC<ManualStatementModalProps> = ({
               </View>
             </View>
 
+            {/* Desglose en Vivo para Saldo de Apertura */}
+            {isOpeningBalanceMode && (
+              <View style={styles.previewCard}>
+                <Text style={styles.previewTitle}>Impacto en Cupo y Saldos:</Text>
+                <View style={styles.previewRow}>
+                  <Text style={styles.previewLabel}>Capital inicial (consume cupo):</Text>
+                  <Text style={[styles.previewVal, { color: '#F87171' }]}>
+                    {formatCurrency(principalCalc, currency)}
+                  </Text>
+                </View>
+                <View style={styles.previewRow}>
+                  <Text style={styles.previewLabel}>Intereses y comisiones:</Text>
+                  <Text style={[styles.previewVal, { color: '#F59E0B' }]}>
+                    {formatCurrency(nonPrincipalCalc, currency)}
+                  </Text>
+                </View>
+                <View style={[styles.previewRow, { borderTopWidth: 1, borderTopColor: '#334155', paddingTop: 6, marginTop: 4 }]}>
+                  <Text style={[styles.previewLabel, { fontWeight: 'bold', color: '#FFFFFF' }]}>Cupo disponible resultante:</Text>
+                  <Text style={[styles.previewVal, { color: '#34D399', fontWeight: 'bold' }]}>
+                    {formatCurrency(resultingAvailable, currency)}
+                  </Text>
+                </View>
+              </View>
+            )}
+
             {/* Notas */}
-            <Text style={styles.inputLabel}>Notas / Descripción</Text>
+            <Text style={styles.inputLabel}>Notas / Descripción (Opcional)</Text>
             <TextInput
               style={[styles.input, { height: 60 }]}
-              placeholder="ej. Extracto del mes actual de Nu / Saldo traído"
+              placeholder={isOpeningBalanceMode ? 'ej. Saldo inicial traído de extracto anterior' : 'ej. Extracto del mes actual'}
               placeholderTextColor="#64748B"
               value={notes}
               onChangeText={setNotes}
@@ -256,7 +318,9 @@ export const ManualStatementModal: React.FC<ManualStatementModalProps> = ({
             {/* Botón Guardar */}
             <TouchableOpacity style={styles.saveBtn} onPress={handleSave} activeOpacity={0.8}>
               <CustomIcon name="CheckCircle2" size={18} color="#FFFFFF" />
-              <Text style={styles.saveBtnText}>Guardar Extracto Oficial</Text>
+              <Text style={styles.saveBtnText}>
+                {isOpeningBalanceMode ? 'Guardar Saldo Actual' : 'Guardar Extracto Oficial'}
+              </Text>
             </TouchableOpacity>
           </ScrollView>
         </View>
@@ -361,5 +425,34 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 15,
     fontWeight: 'bold',
+  },
+  previewCard: {
+    backgroundColor: '#0F172A',
+    borderRadius: 14,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: '#1E293B',
+    marginBottom: 16,
+    gap: 6,
+  },
+  previewTitle: {
+    color: '#94A3B8',
+    fontSize: 12,
+    fontWeight: '700',
+    marginBottom: 4,
+    letterSpacing: 0.5,
+  },
+  previewRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  previewLabel: {
+    color: '#94A3B8',
+    fontSize: 12,
+  },
+  previewVal: {
+    fontSize: 13,
+    fontWeight: '600',
   },
 });

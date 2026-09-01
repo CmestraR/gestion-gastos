@@ -228,4 +228,5 @@ export interface CardStatementSummary {
   availableCredit: number;
   creditLimit?: number;
   hasStatementSnapshot?: boolean;
+  hasOpeningBalance?: boolean;
 }

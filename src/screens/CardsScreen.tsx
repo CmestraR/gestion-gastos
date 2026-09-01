@@ -49,6 +49,7 @@ export const CardsScreen: React.FC = () => {
 
   const [manualStatementModalVisible, setManualStatementModalVisible] = useState(false);
   const [selectedCardForManual, setSelectedCardForManual] = useState<CreditCard | null>(null);
+  const [manualStatementMode, setManualStatementMode] = useState<'opening_balance' | 'statement' | undefined>(undefined);
 
   const [amortizationModalVisible, setAmortizationModalVisible] = useState(false);
   const [selectedPurchase, setSelectedPurchase] = useState<CardPurchase | null>(null);
@@ -64,6 +65,16 @@ export const CardsScreen: React.FC = () => {
   const handleOpenCreateCard = () => {
     setSelectedCardToEdit(null);
     setAddCardModalVisible(true);
+  };
+
+  const handleCardCreated = (newCard: CreditCard) => {
+    showConfirm(
+      '¿Ya utilizabas esta tarjeta?',
+      'Usa esta opción si ya utilizabas esta tarjeta antes de agregarla a la app para configurar su saldo actual. Si es una tarjeta nueva sin movimientos previos, puedes empezar desde cero.',
+      () => handleOpenManualStatement(newCard, 'opening_balance'),
+      'Configurar saldo actual',
+      'Empezar desde cero'
+    );
   };
 
   const handleOpenEditCard = (card: CreditCard) => {
@@ -104,10 +115,11 @@ export const CardsScreen: React.FC = () => {
     setReconcileModalVisible(true);
   };
 
-  const handleOpenManualStatement = (card: CreditCard) => {
+  const handleOpenManualStatement = (card: CreditCard, mode?: 'opening_balance' | 'statement') => {
     const stmt = cardStatements.find((s) => s.cardId === card.id) || null;
     setSelectedCardForManual(card);
     setSelectedStatement(stmt);
+    setManualStatementMode(mode);
     setManualStatementModalVisible(true);
   };
 
@@ -257,6 +269,28 @@ export const CardsScreen: React.FC = () => {
                   onPayCard={() => handleOpenPay(card)}
                 />
 
+                {/* Banner no invasivo para tarjetas sin saldo inicial configurado */}
+                {!stmt?.hasOpeningBalance && (
+                  <View style={styles.openingBalanceBanner}>
+                    <View style={styles.openingBalanceIconBox}>
+                      <CustomIcon name="Sliders" size={15} color="#818CF8" />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.openingBalanceTitle}>Configurar saldo actual</Text>
+                      <Text style={styles.openingBalanceSub}>
+                        Usa esta opción si ya utilizabas esta tarjeta antes de agregarla a la app.
+                      </Text>
+                    </View>
+                    <TouchableOpacity
+                      style={styles.openingBalanceBtn}
+                      onPress={() => handleOpenManualStatement(card, 'opening_balance')}
+                      activeOpacity={0.8}
+                    >
+                      <Text style={styles.openingBalanceBtnText}>Configurar</Text>
+                    </TouchableOpacity>
+                  </View>
+                )}
+
                 {/* Barra de Acciones de Tarjeta */}
                 <View style={styles.cardActionsBar}>
                   <TouchableOpacity
@@ -286,14 +320,27 @@ export const CardsScreen: React.FC = () => {
                     <Text style={styles.cardActionBtnText}>Conciliar</Text>
                   </TouchableOpacity>
 
-                  <TouchableOpacity
-                    style={styles.cardActionBtn}
-                    onPress={() => handleOpenManualStatement(card)}
-                    activeOpacity={0.7}
-                  >
-                    <CustomIcon name="Plus" size={13} color="#CBD5E1" />
-                    <Text style={styles.cardActionBtnText}>+ Cifras</Text>
-                  </TouchableOpacity>
+                  {!stmt?.hasOpeningBalance ? (
+                    <TouchableOpacity
+                      style={[styles.cardActionBtn, styles.cardActionBtnAccent]}
+                      onPress={() => handleOpenManualStatement(card, 'opening_balance')}
+                      activeOpacity={0.7}
+                    >
+                      <CustomIcon name="Sliders" size={13} color="#818CF8" />
+                      <Text style={[styles.cardActionBtnText, { color: '#818CF8', fontWeight: 'bold' }]}>
+                        Saldo Inicial
+                      </Text>
+                    </TouchableOpacity>
+                  ) : (
+                    <TouchableOpacity
+                      style={styles.cardActionBtn}
+                      onPress={() => handleOpenManualStatement(card, 'statement')}
+                      activeOpacity={0.7}
+                    >
+                      <CustomIcon name="Plus" size={13} color="#CBD5E1" />
+                      <Text style={styles.cardActionBtnText}>+ Cifras</Text>
+                    </TouchableOpacity>
+                  )}
                 </View>
 
                 {/* Compras a cuotas específicas de esta tarjeta */}
@@ -338,6 +385,7 @@ export const CardsScreen: React.FC = () => {
       <AddCreditCardModal
         visible={addCardModalVisible}
         cardToEdit={selectedCardToEdit}
+        onCardCreated={handleCardCreated}
         onClose={() => {
           setAddCardModalVisible(false);
           setSelectedCardToEdit(null);
@@ -368,9 +416,12 @@ export const CardsScreen: React.FC = () => {
         visible={manualStatementModalVisible}
         card={selectedCardForManual}
         statementSummary={selectedStatement}
+        initialMode={manualStatementMode}
         onClose={() => {
           setManualStatementModalVisible(false);
           setSelectedCardForManual(null);
+          setSelectedStatement(null);
+          setManualStatementMode(undefined);
         }}
       />
 
@@ -590,12 +641,57 @@ const styles = StyleSheet.create({
     backgroundColor: Theme.colors.primary,
     borderColor: Theme.colors.primary,
   },
+  cardActionBtnAccent: {
+    backgroundColor: 'rgba(99, 102, 241, 0.12)',
+    borderColor: 'rgba(99, 102, 241, 0.35)',
+  },
   cardActionBtnText: {
     color: '#CBD5E1',
     fontSize: 11.5,
     fontWeight: '600',
   },
   cardActionBtnTextPrimary: {
+    color: '#FFFFFF',
+    fontSize: 11.5,
+    fontWeight: 'bold',
+  },
+  openingBalanceBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(99, 102, 241, 0.08)',
+    borderRadius: 12,
+    padding: 12,
+    marginTop: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(99, 102, 241, 0.25)',
+    gap: 10,
+  },
+  openingBalanceIconBox: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    backgroundColor: 'rgba(99, 102, 241, 0.18)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  openingBalanceTitle: {
+    color: '#FFFFFF',
+    fontSize: 12.5,
+    fontWeight: 'bold',
+  },
+  openingBalanceSub: {
+    color: '#94A3B8',
+    fontSize: 11,
+    marginTop: 2,
+    lineHeight: 15,
+  },
+  openingBalanceBtn: {
+    backgroundColor: '#6366F1',
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 8,
+  },
+  openingBalanceBtnText: {
     color: '#FFFFFF',
     fontSize: 11.5,
     fontWeight: 'bold',

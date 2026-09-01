@@ -117,6 +117,18 @@ export const StatementRepository = {
   },
 
   /**
+   * Comprueba si una tarjeta ya tiene un Opening Balance registrado
+   */
+  async hasOpeningBalance(cardId: string): Promise<boolean> {
+    const db = await getDatabase();
+    const row = await db.getFirstAsync<{ id: string }>(
+      'SELECT id FROM card_statements WHERE card_id = ? AND is_opening_balance = 1',
+      [cardId]
+    );
+    return !!row;
+  },
+
+  /**
    * Registra un extracto de apertura inicial auditado (Opening Balance).
    * Solo permite UN saldo de apertura por tarjeta.
    */
