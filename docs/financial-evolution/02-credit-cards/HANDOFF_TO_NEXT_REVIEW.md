@@ -1,23 +1,28 @@
-# Handoff to Next Review — Fase 2.1 Final
+# Handoff to Next Review — Cierre Definitivo Fase 2
 
 ## Estado Actual
-- **Fase 2.1 Culminada al 100%**: Todas las correcciones de integridad, fórmulas exactas, políticas bancarias, acumulaciones de abonos, unicidad de Opening Balance y conciliaciones categorizadas están implementadas y verificadas.
-- **Suite de Pruebas**: 32/32 tests pasando en `tests/financialEngine.test.ts` sobre SQLite real.
-- **Tipado TypeScript**: 0 errores en `tsc --noEmit`.
-- **Paquete de Revisión**: `PHASE_2_1_FINAL_REVIEW.zip` generado con código fuente y reporte de auditoría.
+- **Hotfix Final Implementado y Verificado**:
+  - Separación estricta entre conceptos facturados (`card_payment_allocations`) y conciliados (`card_payment_reconciliation_allocations`).
+  - Tabla auditable `card_payment_reconciliation_allocations` con claves foráneas, borrado en cascada e índices dedicados.
+  - Reversión determinista y exacta por payment allocation sin alterar conciliaciones no relacionadas.
+  - Política de conciliaciones negativas compensando deuda previa o marcando `pending_review`.
+  - Suite acumulativa completa restaurada: 68/68 pruebas pasando en `tests/financialEngine.test.ts` sobre SQLite real.
+  - 0 errores en `tsc --noEmit`.
+- **Veredicto de Publicación**: `READY_TO_PUBLISH`.
+- **Paquete de Revisión**: `PHASE_2_FINAL_RELEASE_REVIEW.zip` generado con código fuente y reporte de auditoría.
 
 ## Instrucciones para la Revisión Externa
-1. Verificar reporte en `docs/financial-evolution/02-credit-cards/PHASE_2_1_FINAL_CORRECTION_REPORT.md`.
-2. Inspeccionar archivos en `docs/financial-evolution/02-credit-cards/review-package/`.
+1. Verificar reporte en `docs/financial-evolution/02-credit-cards/PHASE_2_FINAL_RELEASE_APPROVAL_REPORT.md`.
+2. Inspeccionar matriz de pruebas en `docs/financial-evolution/02-credit-cards/TEST_MATRIX.md`.
 3. Ejecutar pruebas automatizadas:
    ```bash
-   node --test tests/financialEngine.test.ts
+   npm test
    ```
-4. Comprobar que no hay errores de compilación:
+4. Comprobar compilación TypeScript:
    ```bash
-   npx.cmd tsc --noEmit
+   npx tsc --noEmit
    ```
 
-## Próximo Paso (Pendiente de Aprobación Humana)
-- Tras la aprobación humana de Fase 2.1, se procederá con la planificación de la siguiente fase del roadmap (Fase 3: Deudas y Préstamos Formales).
-- **Recordatorio**: No publicar OTA ni hacer build de producción sin autorización explícita.
+## Regla de Parada
+- La Fase 2 queda formalmente aprobada y concluida.
+- **DETENERSE**: No iniciar Fase 3, no publicar OTA, no hacer build de producción.

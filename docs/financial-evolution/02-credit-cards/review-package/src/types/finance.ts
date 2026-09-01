@@ -139,8 +139,18 @@ export interface CardReconciliation {
   differenceAmount: number; // bankReportedDebt - appCalculatedDebt
   differenceCategory?: 'capital' | 'interest' | 'fees' | 'taxes' | 'collection' | 'unclassified';
   status?: 'applied' | 'pending_review';
+  amountPaid?: number; // Monto amortizado / pagado de esta conciliación no capital
   adjustmentTransactionId?: string;
   notes?: string;
+  createdAt: string;
+}
+
+export interface CardPaymentReconciliationAllocation {
+  id: string;
+  paymentAllocationId: string;
+  reconciliationId: string;
+  category: 'interest' | 'fees' | 'taxes' | 'collection';
+  amountApplied: number;
   createdAt: string;
 }
 

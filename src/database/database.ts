@@ -184,10 +184,22 @@ export async function initDatabase(db: AppDatabase): Promise<void> {
       difference_amount REAL NOT NULL DEFAULT 0,
       difference_category TEXT NOT NULL DEFAULT 'unclassified',
       status TEXT NOT NULL DEFAULT 'applied',
+      amount_paid REAL NOT NULL DEFAULT 0,
       adjustment_transaction_id TEXT,
       notes TEXT,
       created_at TEXT NOT NULL,
       FOREIGN KEY (card_id) REFERENCES credit_cards (id) ON DELETE CASCADE
+    );
+
+    CREATE TABLE IF NOT EXISTS card_payment_reconciliation_allocations (
+      id TEXT PRIMARY KEY,
+      payment_allocation_id TEXT NOT NULL,
+      reconciliation_id TEXT NOT NULL,
+      category TEXT NOT NULL,
+      amount_applied REAL NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL,
+      FOREIGN KEY (payment_allocation_id) REFERENCES card_payment_allocations (id) ON DELETE CASCADE,
+      FOREIGN KEY (reconciliation_id) REFERENCES card_reconciliations (id) ON DELETE CASCADE
     );
 
     CREATE TABLE IF NOT EXISTS transactions (
@@ -234,6 +246,8 @@ export async function initDatabase(db: AppDatabase): Promise<void> {
     CREATE INDEX IF NOT EXISTS idx_card_allocations_tx ON card_payment_allocations (transaction_id);
     CREATE INDEX IF NOT EXISTS idx_card_allocations_card ON card_payment_allocations (card_id);
     CREATE INDEX IF NOT EXISTS idx_card_reconciliations_card ON card_reconciliations (card_id);
+    CREATE INDEX IF NOT EXISTS idx_card_pay_rec_alloc_pay ON card_payment_reconciliation_allocations (payment_allocation_id);
+    CREATE INDEX IF NOT EXISTS idx_card_pay_rec_alloc_rec ON card_payment_reconciliation_allocations (reconciliation_id);
   `);
 
   // Migraciones seguras para bases de datos existentes
@@ -323,6 +337,27 @@ export async function initDatabase(db: AppDatabase): Promise<void> {
 
   try {
     await db.execAsync(`ALTER TABLE card_reconciliations ADD COLUMN status TEXT NOT NULL DEFAULT 'applied';`);
+  } catch (_) {}
+
+  try {
+    await db.execAsync(`ALTER TABLE card_reconciliations ADD COLUMN amount_paid REAL NOT NULL DEFAULT 0;`);
+  } catch (_) {}
+
+  try {
+    await db.execAsync(`
+      CREATE TABLE IF NOT EXISTS card_payment_reconciliation_allocations (
+        id TEXT PRIMARY KEY,
+        payment_allocation_id TEXT NOT NULL,
+        reconciliation_id TEXT NOT NULL,
+        category TEXT NOT NULL,
+        amount_applied REAL NOT NULL DEFAULT 0,
+        created_at TEXT NOT NULL,
+        FOREIGN KEY (payment_allocation_id) REFERENCES card_payment_allocations (id) ON DELETE CASCADE,
+        FOREIGN KEY (reconciliation_id) REFERENCES card_reconciliations (id) ON DELETE CASCADE
+      );
+      CREATE INDEX IF NOT EXISTS idx_card_pay_rec_alloc_pay ON card_payment_reconciliation_allocations (payment_allocation_id);
+      CREATE INDEX IF NOT EXISTS idx_card_pay_rec_alloc_rec ON card_payment_reconciliation_allocations (reconciliation_id);
+    `);
   } catch (_) {}
 
   await seedDefaultCategories(db);

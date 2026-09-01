@@ -24,6 +24,11 @@ export interface StatementAllocationContext {
   unbilledDebt: number;
   billedPrincipalRemaining?: number;
   unbilledPrincipalRemaining?: number;
+  unbilledCollectionPending?: number;
+  unbilledLateInterestPending?: number;
+  unbilledCurrentInterestPending?: number;
+  unbilledFeesPending?: number;
+  unbilledTaxesPending?: number;
 }
 
 export interface AllocationResult {
@@ -38,6 +43,11 @@ export interface AllocationResult {
   statementApplied: number;
   unbilledApplied: number;
   minimumApplied: number;
+  unbilledCollectionApplied?: number;
+  unbilledLateInterestApplied?: number;
+  unbilledCurrentInterestApplied?: number;
+  unbilledFeesApplied?: number;
+  unbilledTaxesApplied?: number;
   remainingStatementBalance: number;
   remainingMinimumPayment: number;
   resultingAvailableLimit: number;

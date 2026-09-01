@@ -15,7 +15,7 @@ import { useAlert } from '../../context/AlertContext.tsx';
 import { formatCurrency, formatInputNumber, parseInputNumber } from '../../utils/formatters.ts';
 import { getIssuerPolicy } from '../../utils/issuerPolicies/index.ts';
 import { Theme } from '../common/Theme.ts';
-import { CustomIcon } from '../common/CustomIcon.ts';
+import { CustomIcon } from '../common/CustomIcon.tsx';
 
 interface PayCardModalProps {
   visible: boolean;

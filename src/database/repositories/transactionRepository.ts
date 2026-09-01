@@ -1,6 +1,7 @@
 import { getDatabase } from '../database.ts';
 import type { Transaction } from '../../types/finance.ts';
 import { AccountRepository } from './accountRepository.ts';
+import { ReconciliationRepository } from './reconciliationRepository.ts';
 
 export interface TransactionFilter {
   monthYear?: string; // 'YYYY-MM'
@@ -183,9 +184,16 @@ export const TransactionRepository = {
         principal_amount?: number;
         interest_amount?: number;
         gmf_amount?: number;
-      }>('SELECT id, account_id, card_id, type, amount, to_account_id, card_purchase_id, card_installment_id, statement_id, principal_amount, interest_amount, gmf_amount FROM transactions WHERE id = ?', [id]);
+        date: string;
+        created_at: string;
+      }>('SELECT id, account_id, card_id, type, amount, to_account_id, card_purchase_id, card_installment_id, statement_id, principal_amount, interest_amount, gmf_amount, date, created_at FROM transactions WHERE id = ?', [id]);
 
       if (!tx) return;
+
+      // 1. Prohibir eliminación directa de ajustes de conciliación
+      if (tx.type === 'balance_adjustment') {
+        throw new Error('Los ajustes de conciliación deben corregirse desde el módulo de Conciliación.');
+      }
 
       const gmf = tx.gmf_amount || 0;
 
@@ -238,11 +246,17 @@ export const TransactionRepository = {
         } else if (tx.card_id) {
           // Consultar si tiene asignación de pago registrada
           const alloc = await db.getFirstAsync<{
+            id: string;
             principal_applied: number;
             statement_applied: number;
             minimum_applied: number;
             statement_id: string | null;
-          }>('SELECT principal_applied, statement_applied, minimum_applied, statement_id FROM card_payment_allocations WHERE transaction_id = ?', [tx.id]);
+            collection_fee_applied: number;
+            late_interest_applied: number;
+            current_interest_applied: number;
+            handling_fee_applied: number;
+            taxes_and_fees_applied: number;
+          }>('SELECT * FROM card_payment_allocations WHERE transaction_id = ?', [tx.id]);
 
           const principalToReconsume = alloc ? alloc.principal_applied : (tx.principal_amount || tx.amount);
 
@@ -287,11 +301,27 @@ export const TransactionRepository = {
             }
           }
 
+          // Revertir amortizaciones de conciliaciones bancarias consultando la relación exacta en card_payment_reconciliation_allocations
+          if (alloc) {
+            await ReconciliationRepository.revertPaymentForAllocation(alloc.id);
+          }
+
           // Eliminar fila en asignaciones
           await db.runAsync('DELETE FROM card_payment_allocations WHERE transaction_id = ?', [tx.id]);
         }
       } else if (tx.type === 'card_opening_balance') {
         if (tx.card_id) {
+          // Bloquear eliminación si existen transacciones o pagos posteriores que dependan del opening balance
+          const subsequent = await db.getFirstAsync<{ count: number }>(
+            `SELECT count(*) as count FROM transactions 
+             WHERE card_id = ? AND id != ? AND (date > ? OR (date = ? AND created_at > ?))`,
+            [tx.card_id, tx.id, tx.date, tx.date, tx.created_at]
+          );
+
+          if (subsequent && subsequent.count > 0) {
+            throw new Error('No es posible eliminar el Saldo de Apertura porque existen movimientos o pagos posteriores que dependen de él.');
+          }
+
           // Revertir cupo consumido por el saldo de apertura
           const principalToRestore = tx.principal_amount || tx.amount;
           await db.runAsync(
@@ -352,34 +382,58 @@ export const TransactionRepository = {
         to_account_id: string | null;
         card_purchase_id: string | null;
         card_installment_id: string | null;
+        statement_id?: string | null;
         principal_amount?: number;
         interest_amount?: number;
         gmf_amount?: number;
-      }>('SELECT id, account_id, card_id, type, amount, to_account_id, card_purchase_id, card_installment_id, principal_amount, interest_amount, gmf_amount FROM transactions WHERE id = ?', [id]);
+      }>('SELECT id, account_id, card_id, type, amount, to_account_id, card_purchase_id, card_installment_id, statement_id, principal_amount, interest_amount, gmf_amount FROM transactions WHERE id = ?', [id]);
 
       if (!oldTx) return;
+
+      // 2. BLOQUEO ESTRUCTURAL DE EDICIÓN PARA card_payment
+      if (oldTx.type === 'card_payment') {
+        const hasStructuralChanges =
+          oldTx.amount !== updatedTx.amount ||
+          (oldTx.account_id || null) !== (updatedTx.accountId || null) ||
+          (oldTx.card_id || null) !== (updatedTx.cardId || null) ||
+          (oldTx.statement_id || null) !== (updatedTx.statementId || null) ||
+          (oldTx.principal_amount || 0) !== (updatedTx.principalAmount || 0) ||
+          (oldTx.interest_amount || 0) !== (updatedTx.interestAmount || 0) ||
+          oldTx.type !== updatedTx.type;
+
+        if (hasStructuralChanges) {
+          throw new Error('Los pagos de tarjeta no pueden modificarse directamente. Revierte el pago y regístralo nuevamente.');
+        }
+
+        // Permitir actualizar únicamente notas y descripción sin alterar contabilidad
+        await db.runAsync(
+          'UPDATE transactions SET description = ?, notes = ? WHERE id = ?',
+          [updatedTx.description, updatedTx.notes || null, id]
+        );
+        return;
+      }
+
+      // 3. BLOQUEO ESTRUCTURAL DE EDICIÓN PARA balance_adjustment
+      if (oldTx.type === 'balance_adjustment') {
+        const hasStructuralChanges =
+          oldTx.amount !== updatedTx.amount ||
+          (oldTx.card_id || null) !== (updatedTx.cardId || null) ||
+          oldTx.type !== updatedTx.type;
+
+        if (hasStructuralChanges) {
+          throw new Error('Los ajustes de conciliación deben corregirse desde el módulo de Conciliación.');
+        }
+
+        await db.runAsync(
+          'UPDATE transactions SET description = ?, notes = ? WHERE id = ?',
+          [updatedTx.description, updatedTx.notes || null, id]
+        );
+        return;
+      }
 
       // REGLA DE INTEGRIDAD: Si es un pago vinculado a cuota, no permitir cambios de montos/cuentas estructurales
       if (oldTx.card_installment_id && (oldTx.amount !== updatedTx.amount || oldTx.account_id !== updatedTx.accountId || oldTx.card_id !== updatedTx.cardId)) {
         throw new Error('No es posible modificar montos o cuentas de un pago vinculado a una cuota. Debe revertir el pago e ingresar uno nuevo.');
-      }
-
-      // Validar límite de deuda en tarjeta para abono general
-      if (updatedTx.type === 'card_payment' && updatedTx.cardId && !updatedTx.cardInstallmentId) {
-        const card = await db.getFirstAsync<{ credit_limit: number; available_limit: number; is_archived: number }>(
-          'SELECT credit_limit, available_limit, is_archived FROM credit_cards WHERE id = ?',
-          [updatedTx.cardId]
-        );
-        if (!card || card.is_archived === 1) {
-          throw new Error('La tarjeta de crédito no existe o está archivada.');
-        }
-
-        // Deuda considerando la reversión del pago anterior si era sobre la misma tarjeta
-        const prevPaymentOnSameCard = (oldTx.card_id === updatedTx.cardId && oldTx.type === 'card_payment') ? oldTx.amount : 0;
-        const currentDebtWithReversal = Math.max(0, +(card.credit_limit - (card.available_limit - prevPaymentOnSameCard)).toFixed(2));
-        if (updatedTx.amount > currentDebtWithReversal) {
-          throw new Error(`El monto del abono ($${updatedTx.amount}) no puede ser superior a la deuda actual de la tarjeta ($${currentDebtWithReversal}).`);
-        }
       }
 
       const oldGmf = oldTx.gmf_amount || 0;
@@ -392,17 +446,6 @@ export const TransactionRepository = {
       } else if (oldTx.type === 'transfer' && oldTx.account_id && oldTx.to_account_id) {
         await AccountRepository.updateBalance(oldTx.account_id, oldTx.amount + oldGmf);
         await AccountRepository.updateBalance(oldTx.to_account_id, -oldTx.amount);
-      } else if (oldTx.type === 'card_payment') {
-        if (oldTx.account_id) {
-          await AccountRepository.updateBalance(oldTx.account_id, oldTx.amount);
-        }
-        if (oldTx.card_id && !oldTx.card_installment_id) {
-          // Revertir cupo liberado anteriormente en tarjeta
-          await db.runAsync(
-            'UPDATE credit_cards SET available_limit = MAX(0, available_limit - ?) WHERE id = ?',
-            [oldTx.amount, oldTx.card_id]
-          );
-        }
       }
 
       // 2. Aplicar efectos del movimiento actualizado
@@ -414,20 +457,6 @@ export const TransactionRepository = {
       } else if (updatedTx.type === 'transfer' && updatedTx.accountId && updatedTx.toAccountId) {
         await AccountRepository.updateBalance(updatedTx.accountId, -(updatedTx.amount + newGmf));
         await AccountRepository.updateBalance(updatedTx.toAccountId, updatedTx.amount);
-      } else if (updatedTx.type === 'card_payment') {
-        if (updatedTx.accountId) {
-          await AccountRepository.updateBalance(updatedTx.accountId, -updatedTx.amount);
-        }
-        if (updatedTx.cardId && !updatedTx.cardInstallmentId) {
-          // Aplicar nuevo cupo en tarjeta de forma simétrica
-          const cardRes = await db.runAsync(
-            'UPDATE credit_cards SET available_limit = MIN(credit_limit, available_limit + ?) WHERE id = ?',
-            [updatedTx.amount, updatedTx.cardId]
-          );
-          if (cardRes.changes === 0) {
-            throw new Error('No se pudo actualizar el cupo de la tarjeta de crédito.');
-          }
-        }
       }
 
       // 3. Actualizar registro en base de datos
@@ -451,7 +480,7 @@ export const TransactionRepository = {
           updatedTx.cardInstallmentId || null,
           updatedTx.principalAmount || 0,
           updatedTx.interestAmount || 0,
-          updatedTx.gmfAmount || 0,
+          newGmf,
           id,
         ]
       );

@@ -9,6 +9,7 @@ import type {
 import { AccountRepository } from './accountRepository.ts';
 import { StatementRepository } from './statementRepository.ts';
 import { CycleRepository } from './cycleRepository.ts';
+import { ReconciliationRepository } from './reconciliationRepository.ts';
 import { getIssuerPolicy } from '../../utils/issuerPolicies/index.ts';
 import { calculateCardCycleDates } from '../../utils/financialMath.ts';
 
@@ -213,7 +214,7 @@ export const CardRepository = {
       first_installment_date: string;
       status: string;
       created_at: string;
-    }>('SELECT * FROM card_purchases WHERE card_id = ? AND status = "active" ORDER BY created_at DESC', [cardId]);
+    }>("SELECT * FROM card_purchases WHERE card_id = ? AND status = 'active' ORDER BY created_at DESC", [cardId]);
 
     return rows.map((r) => ({
       id: r.id,
@@ -246,7 +247,7 @@ export const CardRepository = {
       first_installment_date: string;
       status: string;
       created_at: string;
-    }>('SELECT * FROM card_purchases WHERE status = "active" ORDER BY created_at DESC');
+    }>("SELECT * FROM card_purchases WHERE status = 'active' ORDER BY created_at DESC");
 
     return rows.map((r) => ({
       id: r.id,
@@ -607,16 +608,21 @@ export const CardRepository = {
       if (!acc || acc.is_archived === 1) {
         throw new Error('La cuenta bancaria seleccionada no existe o está archivada.');
       }
+      if (acc.balance < amount) {
+        throw new Error(`La cuenta seleccionada no tiene saldo suficiente ($${acc.balance}) para realizar este pago ($${amount}).`);
+      }
 
       // 3. Consultar extracto objetivo si se especificó, o el más reciente
       let stmt = statementId
         ? await StatementRepository.getStatementById(statementId)
         : await StatementRepository.getLatestStatement(cardId);
 
-      // 4. Obtener conceptos realmente pendientes del extracto
+      // 4. Obtener conceptos realmente pendientes del extracto y de conciliaciones no facturadas
       const pending = stmt
         ? await StatementRepository.getPendingConcepts(stmt.id)
         : null;
+
+      const nonPrincipalReconciliations = await ReconciliationRepository.getPendingNonPrincipalSummary(card.id);
 
       // 5. Obtener política del emisor
       const policy = getIssuerPolicy(card.issuerId);
@@ -625,7 +631,7 @@ export const CardRepository = {
       const allocationContext = {
         creditLimit: card.creditLimit,
         availableLimit: card.availableLimit,
-        totalStatementBalance: pending ? pending.remainingStatementBalance : summary.totalCurrentDebt,
+        totalStatementBalance: pending ? pending.remainingStatementBalance : 0,
         statementBalancePaid: stmt ? stmt.statementBalancePaid : 0,
         minimumPaymentOriginal: stmt ? stmt.minimumPaymentOriginal : 0,
         minimumPaymentPaid: stmt ? stmt.minimumPaymentPaid : 0,
@@ -634,14 +640,22 @@ export const CardRepository = {
         collectionFee: pending ? pending.remainingCollectionFee : 0,
         lateInterest: pending ? pending.remainingLateInterest : 0,
         currentInterest: pending ? pending.remainingCurrentInterest : 0,
-        principalTotal: pending ? pending.remainingPrincipal : summary.principalDebt,
+        principalTotal: summary.principalDebt,
         unbilledDebt: summary.unbilledDebt,
         billedPrincipalRemaining: summary.billedPrincipalRemaining,
         unbilledPrincipalRemaining: summary.unbilledPrincipalRemaining,
+        unbilledCollectionPending: nonPrincipalReconciliations.collectionPending,
+        unbilledLateInterestPending: 0,
+        unbilledCurrentInterestPending: nonPrincipalReconciliations.interestPending,
+        unbilledFeesPending: nonPrincipalReconciliations.feesPending,
+        unbilledTaxesPending: nonPrincipalReconciliations.taxesPending,
       };
 
       // 7. Ejecutar asignación de pago según la política
       const allocResult = policy.allocatePayment(amount, allocationContext, options);
+
+      // Cap estricto de dominio: principalApplied no puede superar principalDebt
+      allocResult.principalApplied = Math.min(allocResult.principalApplied, summary.principalDebt);
 
       // 8. Debitar cuenta bancaria
       await AccountRepository.updateBalance(accountId, -amount);
@@ -669,7 +683,7 @@ export const CardRepository = {
           amount,
           'cat-financial',
           `Pago ${card.name}`,
-          `Abono a tarjeta (Capital: $${allocResult.principalApplied}, Intereses: $${allocResult.currentInterestApplied + allocResult.lateInterestApplied}, Cargos: $${allocResult.handlingFeeApplied + allocResult.taxesAndFeesApplied + allocResult.collectionFeeApplied})`,
+          `Abono a tarjeta (Capital: $${allocResult.principalApplied}, Intereses Facturados: $${allocResult.currentInterestApplied + allocResult.lateInterestApplied}, Cargos Facturados: $${allocResult.handlingFeeApplied + allocResult.taxesAndFeesApplied + allocResult.collectionFeeApplied})`,
           today,
           null,
           null,
@@ -682,7 +696,7 @@ export const CardRepository = {
         ]
       );
 
-      // 11. Registrar imputación en card_payment_allocations con desglose completo
+      // 11. Registrar imputación en card_payment_allocations con conceptos facturados puros (BILLED ONLY)
       await db.runAsync(
         `INSERT INTO card_payment_allocations (
           id, transaction_id, card_id, statement_id, total_payment, principal_applied,
@@ -697,11 +711,11 @@ export const CardRepository = {
           stmt?.id || null,
           amount,
           allocResult.principalApplied,
-          allocResult.currentInterestApplied,
-          allocResult.lateInterestApplied,
-          allocResult.handlingFeeApplied,
-          allocResult.taxesAndFeesApplied,
-          allocResult.collectionFeeApplied,
+          allocResult.currentInterestApplied, // BILLED ONLY
+          allocResult.lateInterestApplied,    // BILLED ONLY
+          allocResult.handlingFeeApplied,     // BILLED ONLY
+          allocResult.taxesAndFeesApplied,    // BILLED ONLY
+          allocResult.collectionFeeApplied,   // BILLED ONLY
           allocResult.creditBalanceApplied,
           allocResult.statementApplied,
           allocResult.unbilledApplied,
@@ -710,7 +724,22 @@ export const CardRepository = {
         ]
       );
 
-      // 12. Si existe extracto vinculado, actualizar acumulados pagados y estado con statement_applied
+      // 12. Aplicar y vincular pagos a conciliaciones no capitales pendientes (UNBILLED/RECONCILED)
+      const unbilledInterest = ((allocResult.unbilledLateInterestApplied || 0) + (allocResult.unbilledCurrentInterestApplied || 0));
+      const unbilledFees = allocResult.unbilledFeesApplied || 0;
+      const unbilledTaxes = allocResult.unbilledTaxesApplied || 0;
+      const unbilledCollection = allocResult.unbilledCollectionApplied || 0;
+
+      if (unbilledInterest > 0 || unbilledFees > 0 || unbilledTaxes > 0 || unbilledCollection > 0) {
+        await ReconciliationRepository.applyPaymentToReconciliations(card.id, allocationId, {
+          collection: unbilledCollection,
+          interest: unbilledInterest,
+          fees: unbilledFees,
+          taxes: unbilledTaxes,
+        });
+      }
+
+      // 13. Si existe extracto vinculado, actualizar acumulados pagados y estado con statement_applied
       if (stmt) {
         await StatementRepository.updateStatementPayment(
           stmt.id,
@@ -777,14 +806,9 @@ export const CardRepository = {
       minimumPaymentRemaining = pending.remainingMinimumPayment;
     }
 
-    // 3. Consultar cargos/intereses no facturados o ajustes de conciliación no capitales
-    const nonPrincipalAdj = await db.getFirstAsync<{ total: number }>(
-      `SELECT COALESCE(SUM(difference_amount), 0) as total 
-       FROM card_reconciliations 
-       WHERE card_id = ? AND difference_category != 'capital' AND status = 'applied'`,
-      [card.id]
-    );
-    const unbilledNonPrincipalRemaining = Math.max(0, +(nonPrincipalAdj?.total || 0).toFixed(2));
+    // 3. Consultar cargos/intereses no facturados de conciliación pendientes (descontando lo pagado)
+    const nonPrincipalSummary = await ReconciliationRepository.getPendingNonPrincipalSummary(card.id);
+    const unbilledNonPrincipalRemaining = nonPrincipalSummary.totalPending;
 
     // 4. Deuda no principal total
     const nonPrincipalDebt = +(billedNonPrincipalRemaining + unbilledNonPrincipalRemaining).toFixed(2);

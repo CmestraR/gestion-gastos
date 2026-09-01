@@ -15,7 +15,7 @@ import { useAlert } from '../../context/AlertContext.tsx';
 import { formatCurrency, formatInputNumber, parseInputNumber } from '../../utils/formatters.ts';
 import { CycleRepository } from '../../database/repositories/cycleRepository.ts';
 import { Theme } from '../common/Theme.ts';
-import { CustomIcon } from '../common/CustomIcon.ts';
+import { CustomIcon } from '../common/CustomIcon.tsx';
 
 interface ManualStatementModalProps {
   visible: boolean;
