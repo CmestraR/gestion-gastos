@@ -1,0 +1,19 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: keahorro-dev-container
+    ports:
+      - "8081:8081"
+    volumes:
+      # Sincroniza el código fuente en tiempo real entre tu PC y el contenedor
+      - .:/app
+      # Protege y aísla node_modules dentro del contenedor para no tocar Windows
+      - /app/node_modules
+    environment:
+      - NODE_ENV=development
+      - EXPO_DEVTOOLS_LISTEN_ADDRESS=0.0.0.0
+    stdin_open: true
+    tty: true
+    command: npx expo start --tunnel
