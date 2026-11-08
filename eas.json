@@ -15,10 +15,17 @@
         "buildType": "apk"
       }
     },
+    "test": {
+      "distribution": "internal",
+      "channel": "test",
+      "android": {
+        "buildType": "apk"
+      }
+    },
     "production": {
       "channel": "production",
       "android": {
-        "buildType": "apk"
+        "buildType": "app-bundle"
       }
     }
   },

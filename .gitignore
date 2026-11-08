@@ -33,8 +33,14 @@ yarn-error.*
 # local env files
 .env*.local
 
-# typescript
+# TypeScript
 *.tsbuildinfo
+
+# Archives & Binaries
+*.zip
+*.tar.gz
+*.apk
+*.aab
 
 # generated native folders
 /ios
