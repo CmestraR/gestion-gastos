@@ -14,6 +14,7 @@ import { formatCurrency } from '../utils/formatters';
 import { Theme } from '../components/common/Theme';
 import { CustomIcon } from '../components/common/CustomIcon';
 import { CreditCardVisual } from '../components/cards/CreditCardVisual';
+import { AnimatedWalletStack } from '../components/cards/AnimatedWalletStack';
 import { AddCreditCardModal } from '../components/cards/AddCreditCardModal';
 import { CardStatementModal } from '../components/cards/CardStatementModal';
 import { PayCardModal } from '../components/cards/PayCardModal';
@@ -56,6 +57,7 @@ export const CardsScreen: React.FC = () => {
   const [selectedPurchaseCard, setSelectedPurchaseCard] = useState<CreditCard | null>(null);
 
   const [addPurchaseModalVisible, setAddPurchaseModalVisible] = useState(false);
+  const [viewMode, setViewMode] = useState<'wallet' | 'list'>('wallet');
 
   const totalCreditLimit = creditCards.reduce((sum, c) => sum + c.creditLimit, 0);
   const totalAvailable = creditCards.reduce((sum, c) => sum + c.availableLimit, 0);
@@ -190,13 +192,63 @@ export const CardsScreen: React.FC = () => {
 
         {/* Tarjetas de Crédito Registradas */}
         <View style={styles.sectionHeadingRow}>
-          <Text style={styles.sectionHeading}>Tus Tarjetas ({creditCards.length})</Text>
+          <View style={styles.headingLeftGroup}>
+            <Text style={styles.sectionHeading}>Tus Tarjetas ({creditCards.length})</Text>
+            {creditCards.length > 0 && (
+              <View style={styles.viewModeSwitch}>
+                <TouchableOpacity
+                  style={[
+                    styles.viewModeBtn,
+                    viewMode === 'wallet' && styles.viewModeBtnActive,
+                  ]}
+                  onPress={() => setViewMode('wallet')}
+                >
+                  <CustomIcon
+                    name="Layers"
+                    size={12}
+                    color={viewMode === 'wallet' ? '#FFFFFF' : '#94A3B8'}
+                  />
+                  <Text
+                    style={[
+                      styles.viewModeBtnText,
+                      viewMode === 'wallet' && styles.viewModeBtnTextActive,
+                    ]}
+                  >
+                    Billetera
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[
+                    styles.viewModeBtn,
+                    viewMode === 'list' && styles.viewModeBtnActive,
+                  ]}
+                  onPress={() => setViewMode('list')}
+                >
+                  <CustomIcon
+                    name="List"
+                    size={12}
+                    color={viewMode === 'list' ? '#FFFFFF' : '#94A3B8'}
+                  />
+                  <Text
+                    style={[
+                      styles.viewModeBtnText,
+                      viewMode === 'list' && styles.viewModeBtnTextActive,
+                    ]}
+                  >
+                    Lista
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            )}
+          </View>
+
           <TouchableOpacity
             style={styles.newPurchaseQuick}
             onPress={() => setAddPurchaseModalVisible(true)}
           >
             <CustomIcon name="ShoppingBag" size={14} color="#818CF8" />
-            <Text style={styles.newPurchaseQuickText}>+ Compra a Cuotas</Text>
+            <Text style={styles.newPurchaseQuickText}>+ Compra</Text>
           </TouchableOpacity>
         </View>
 
@@ -214,6 +266,22 @@ export const CardsScreen: React.FC = () => {
               <Text style={styles.emptyBtnText}>Agregar Tarjeta</Text>
             </TouchableOpacity>
           </View>
+        ) : viewMode === 'wallet' ? (
+          <AnimatedWalletStack
+            creditCards={creditCards}
+            cardStatements={cardStatements}
+            activePurchases={activePurchases}
+            currency={currency}
+            onEditCard={handleOpenEditCard}
+            onDeleteCard={handleDeleteCard}
+            onOpenStatement={handleOpenStatement}
+            onOpenPay={handleOpenPay}
+            onOpenReconcile={handleOpenReconcile}
+            onOpenManualStatement={handleOpenManualStatement}
+            onOpenAmortization={handleOpenAmortization}
+            onOpenAddPurchase={() => setAddPurchaseModalVisible(true)}
+            onOpenCreateCard={handleOpenCreateCard}
+          />
         ) : (
           creditCards.map((card) => {
             const stmt = cardStatements.find((s) => s.cardId === card.id);
@@ -559,6 +627,39 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 12,
+  },
+  headingLeftGroup: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  viewModeSwitch: {
+    flexDirection: 'row',
+    backgroundColor: '#0F172A',
+    borderRadius: 10,
+    padding: 2,
+    borderWidth: 1,
+    borderColor: '#1E293B',
+  },
+  viewModeBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  viewModeBtnActive: {
+    backgroundColor: '#4F46E5',
+  },
+  viewModeBtnText: {
+    color: '#94A3B8',
+    fontSize: 10.5,
+    fontWeight: '600',
+  },
+  viewModeBtnTextActive: {
+    color: '#FFFFFF',
+    fontWeight: '700',
   },
   sectionHeading: {
     color: '#FFFFFF',
