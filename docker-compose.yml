@@ -17,3 +17,4 @@ services:
     stdin_open: true
     tty: true
     command: npx expo start --tunnel
+

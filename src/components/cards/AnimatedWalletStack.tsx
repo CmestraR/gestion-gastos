@@ -721,28 +721,6 @@ export const AnimatedWalletStack: React.FC<AnimatedWalletStackProps> = ({
         </TouchableOpacity>
       )}
 
-      {/* Banner no invasivo si la tarjeta activa no tiene saldo inicial configurado */}
-      {!activeStmt?.hasOpeningBalance && (
-        <View style={styles.openingBalanceBanner}>
-          <View style={styles.openingBalanceIconBox}>
-            <CustomIcon name="Sliders" size={15} color="#818CF8" />
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.openingBalanceTitle}>Configurar saldo actual</Text>
-            <Text style={styles.openingBalanceSub}>
-              Usa esta opción si ya utilizabas {activeCard.name} antes de agregarla a la app.
-            </Text>
-          </View>
-          <TouchableOpacity
-            style={styles.openingBalanceBtn}
-            onPress={() => onOpenManualStatement(activeCard, 'opening_balance')}
-            activeOpacity={0.8}
-          >
-            <Text style={styles.openingBalanceBtnText}>Configurar</Text>
-          </TouchableOpacity>
-        </View>
-      )}
-
       {/* 4. BARRA DE ACCIONES OPERATIVAS DE LA TARJETA ACTIVA */}
       <View style={styles.cardActionsBar}>
         <TouchableOpacity
@@ -777,33 +755,6 @@ export const AnimatedWalletStack: React.FC<AnimatedWalletStackProps> = ({
             Conciliar
           </Text>
         </TouchableOpacity>
-
-        {!activeStmt?.hasOpeningBalance ? (
-          <TouchableOpacity
-            style={[styles.cardActionBtn, styles.cardActionBtnAccent]}
-            onPress={() => onOpenManualStatement(activeCard, 'opening_balance')}
-            activeOpacity={0.7}
-          >
-            <CustomIcon name="Sliders" size={13} color="#818CF8" />
-            <Text
-              style={[styles.cardActionBtnText, { color: '#818CF8', fontWeight: 'bold' }]}
-              numberOfLines={1}
-            >
-              Apertura
-            </Text>
-          </TouchableOpacity>
-        ) : (
-          <TouchableOpacity
-            style={styles.cardActionBtn}
-            onPress={() => onOpenManualStatement(activeCard, 'statement')}
-            activeOpacity={0.7}
-          >
-            <CustomIcon name="Plus" size={13} color="#CBD5E1" />
-            <Text style={styles.cardActionBtnText} numberOfLines={1}>
-              + Cifras
-            </Text>
-          </TouchableOpacity>
-        )}
       </View>
 
       {/* 5. COMPRAS A CUOTAS DE LA TARJETA ACTIVA */}

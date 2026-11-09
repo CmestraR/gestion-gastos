@@ -337,28 +337,6 @@ export const CardsScreen: React.FC = () => {
                   onPayCard={() => handleOpenPay(card)}
                 />
 
-                {/* Banner no invasivo para tarjetas sin saldo inicial configurado */}
-                {!stmt?.hasOpeningBalance && (
-                  <View style={styles.openingBalanceBanner}>
-                    <View style={styles.openingBalanceIconBox}>
-                      <CustomIcon name="Sliders" size={15} color="#818CF8" />
-                    </View>
-                    <View style={{ flex: 1 }}>
-                      <Text style={styles.openingBalanceTitle}>Configurar saldo actual</Text>
-                      <Text style={styles.openingBalanceSub}>
-                        Usa esta opción si ya utilizabas esta tarjeta antes de agregarla a la app.
-                      </Text>
-                    </View>
-                    <TouchableOpacity
-                      style={styles.openingBalanceBtn}
-                      onPress={() => handleOpenManualStatement(card, 'opening_balance')}
-                      activeOpacity={0.8}
-                    >
-                      <Text style={styles.openingBalanceBtnText}>Configurar</Text>
-                    </TouchableOpacity>
-                  </View>
-                )}
-
                 {/* Barra de Acciones de Tarjeta */}
                 <View style={styles.cardActionsBar}>
                   <TouchableOpacity
@@ -393,33 +371,6 @@ export const CardsScreen: React.FC = () => {
                       Conciliar
                     </Text>
                   </TouchableOpacity>
-
-                  {!stmt?.hasOpeningBalance ? (
-                    <TouchableOpacity
-                      style={[styles.cardActionBtn, styles.cardActionBtnAccent]}
-                      onPress={() => handleOpenManualStatement(card, 'opening_balance')}
-                      activeOpacity={0.7}
-                    >
-                      <CustomIcon name="Sliders" size={12} color="#818CF8" />
-                      <Text
-                        style={[styles.cardActionBtnText, { color: '#818CF8', fontWeight: 'bold' }]}
-                        numberOfLines={1}
-                      >
-                        Apertura
-                      </Text>
-                    </TouchableOpacity>
-                  ) : (
-                    <TouchableOpacity
-                      style={styles.cardActionBtn}
-                      onPress={() => handleOpenManualStatement(card, 'statement')}
-                      activeOpacity={0.7}
-                    >
-                      <CustomIcon name="Plus" size={12} color="#CBD5E1" />
-                      <Text style={styles.cardActionBtnText} numberOfLines={1}>
-                        + Cifras
-                      </Text>
-                    </TouchableOpacity>
-                  )}
                 </View>
 
                 {/* Compras a cuotas específicas de esta tarjeta */}
