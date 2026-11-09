@@ -15,6 +15,7 @@ import { Theme } from '../components/common/Theme';
 import { CustomIcon } from '../components/common/CustomIcon';
 import { CreditCardVisual, CARD_WIDTH } from '../components/cards/CreditCardVisual';
 import { AccountCard } from '../components/accounts/AccountCard';
+import { AccountMiniCard, MINI_CARD_WIDTH } from '../components/accounts/AccountMiniCard';
 import { TransactionItem } from '../components/transactions/TransactionItem';
 import { CardStatementModal } from '../components/cards/CardStatementModal';
 import { InstallmentAmortizationModal } from '../components/cards/InstallmentAmortizationModal';
@@ -93,7 +94,7 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({ onNavigateToTa
     setAmortizationModalVisible(true);
   };
 
-  const recentTransactions = transactions.slice(0, 5);
+  const recentTransactions = transactions.slice(0, 4);
 
   return (
     <View style={styles.safeArea}>
@@ -102,13 +103,14 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({ onNavigateToTa
         showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#6366F1" />}
       >
-        {/* Header Superior con Botón de Ocultar Saldo & Ajustes */}
+        {/* Header Superior: marca, captura rápida (ícono con badge), ocultar saldo & ajustes */}
         <View style={styles.header}>
           <View>
-            <Text style={styles.greeting}>Control Financiero</Text>
-            <Text style={styles.appName}>Mi Billetera & Gastos</Text>
+            <Text style={styles.appName}>keAhorro</Text>
+            <Text style={styles.greeting}>keAhorro | Control Financiero</Text>
           </View>
           <View style={{ flexDirection: 'row', gap: 8 }}>
+            <QuickIslandBar variant="icon" onOpenAddModal={(data) => handleOpenAddWithPrefill(data)} />
             <TouchableOpacity style={styles.settingsHeaderBtn} onPress={toggleHideBalance}>
               <CustomIcon name={isBalanceHidden ? 'EyeOff' : 'Eye'} size={20} color="#CBD5E1" />
             </TouchableOpacity>
@@ -117,9 +119,6 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({ onNavigateToTa
             </TouchableOpacity>
           </View>
         </View>
-
-        {/* Acceso Rápido / Isla Dinámica de Notificaciones */}
-        <QuickIslandBar onOpenAddModal={(data) => handleOpenAddWithPrefill(data)} />
 
         {/* Tarjeta de Saldo Disponible Consolidado */}
         <View style={styles.netWorthCard}>
@@ -230,9 +229,8 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({ onNavigateToTa
                     <CreditCardVisual
                       card={card}
                       statement={stmt}
-                      onViewStatement={() => handleOpenStatement(card)}
-                      onAddPurchase={() => setAddTxVisible(true)}
-                      onPayCard={() => handleOpenStatement(card)}
+                      summary
+                      onPress={() => onNavigateToTab('cards')}
                     />
                   </View>
                 );
@@ -305,23 +303,32 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({ onNavigateToTa
           </TouchableOpacity>
         </View>
 
-        <View style={styles.accountsGrid}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          nestedScrollEnabled={true}
+          contentContainerStyle={styles.accountsCarousel}
+          style={styles.accountsScroll}
+          snapToInterval={MINI_CARD_WIDTH + 10}
+          decelerationRate="fast"
+        >
           {accounts.map((acc) => (
-            <AccountCard
+            <AccountMiniCard
               key={acc.id}
               account={acc}
               onPress={() => onNavigateToTab('transactions', { accountId: acc.id })}
               onPayDebt={() => handleOpenPayDebt(acc)}
             />
           ))}
-        </View>
+          <TouchableOpacity style={styles.seeAllTile} onPress={() => onNavigateToTab('accounts')} activeOpacity={0.8}>
+            <CustomIcon name="ArrowRight" size={18} color="#818CF8" />
+            <Text style={styles.seeAllTileText}>Ver todas</Text>
+          </TouchableOpacity>
+        </ScrollView>
 
         {/* Últimas Transacciones */}
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Últimos Movimientos</Text>
-          <TouchableOpacity onPress={() => onNavigateToTab('transactions')}>
-            <Text style={styles.seeAllText}>Historial completo</Text>
-          </TouchableOpacity>
         </View>
 
         {recentTransactions.length === 0 ? (
@@ -331,10 +338,18 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({ onNavigateToTa
         ) : (
           <View style={styles.transactionsList}>
             {recentTransactions.map((tx) => (
-              <TransactionItem key={tx.id} transaction={tx} />
+              <TransactionItem key={tx.id} transaction={tx} compact />
             ))}
           </View>
         )}
+
+        <TouchableOpacity
+          style={styles.historyBtn}
+          onPress={() => onNavigateToTab('transactions')}
+          activeOpacity={0.8}
+        >
+          <Text style={styles.historyBtnText}>Ver todo el historial</Text>
+        </TouchableOpacity>
 
         <View style={{ height: 90 }} />
       </ScrollView>
@@ -394,8 +409,7 @@ const styles = StyleSheet.create({
     color: '#94A3B8',
     fontSize: 12,
     fontWeight: '600',
-    textTransform: 'uppercase',
-    letterSpacing: 1,
+    letterSpacing: 0.5,
   },
   appName: {
     color: '#FFFFFF',
@@ -687,6 +701,42 @@ const styles = StyleSheet.create({
   },
   accountsGrid: {
     marginBottom: 10,
+  },
+  accountsScroll: {
+    marginBottom: 14,
+  },
+  accountsCarousel: {
+    gap: 10,
+    paddingRight: 4,
+  },
+  seeAllTile: {
+    width: 96,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#334155',
+    borderStyle: 'dashed',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 6,
+  },
+  seeAllTileText: {
+    color: '#818CF8',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  historyBtn: {
+    borderWidth: 1,
+    borderColor: '#334155',
+    borderRadius: 12,
+    paddingVertical: 10,
+    alignItems: 'center',
+    marginTop: 2,
+    marginBottom: 10,
+  },
+  historyBtnText: {
+    color: '#818CF8',
+    fontSize: 13,
+    fontWeight: '600',
   },
   transactionsList: {
     marginBottom: 10,

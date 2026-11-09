@@ -17,9 +17,11 @@ import { CustomIcon } from './CustomIcon';
 
 interface QuickIslandBarProps {
   onOpenAddModal: (prefill?: Partial<ParsedBankMessage>) => void;
+  /** 'pill' (por defecto): banner completo. 'icon': ícono con badge para el header. */
+  variant?: 'pill' | 'icon';
 }
 
-export const QuickIslandBar: React.FC<QuickIslandBarProps> = ({ onOpenAddModal }) => {
+export const QuickIslandBar: React.FC<QuickIslandBarProps> = ({ onOpenAddModal, variant = 'pill' }) => {
   const { currency } = useFinancial();
   const { showWarning } = useAlert();
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -55,21 +57,34 @@ export const QuickIslandBar: React.FC<QuickIslandBarProps> = ({ onOpenAddModal }
 
   return (
     <>
-      {/* Píldora de Acceso Rápido / Isla Dinámica */}
-      <TouchableOpacity
-        style={styles.islandPill}
-        activeOpacity={0.85}
-        onPress={() => setIsModalOpen(true)}
-      >
-        <View style={styles.islandPulseDot} />
-        <View style={styles.islandContent}>
-          <CustomIcon name="Sparkles" size={14} color="#818CF8" />
-          <Text style={styles.islandText}>Captura Rápida de Notificaciones</Text>
-        </View>
-        <View style={styles.islandBadge}>
-          <Text style={styles.islandBadgeText}>Auto</Text>
-        </View>
-      </TouchableOpacity>
+      {variant === 'icon' ? (
+        /* Acceso sutil de ícono con badge (header) */
+        <TouchableOpacity
+          style={styles.iconTrigger}
+          activeOpacity={0.8}
+          onPress={() => setIsModalOpen(true)}
+          accessibilityLabel="Notificaciones activas - captura rápida"
+        >
+          <CustomIcon name="Sparkles" size={20} color="#818CF8" />
+          <View style={styles.iconBadge} />
+        </TouchableOpacity>
+      ) : (
+        /* Píldora de Acceso Rápido / Isla Dinámica */
+        <TouchableOpacity
+          style={styles.islandPill}
+          activeOpacity={0.85}
+          onPress={() => setIsModalOpen(true)}
+        >
+          <View style={styles.islandPulseDot} />
+          <View style={styles.islandContent}>
+            <CustomIcon name="Sparkles" size={14} color="#818CF8" />
+            <Text style={styles.islandText}>Captura Rápida de Notificaciones</Text>
+          </View>
+          <View style={styles.islandBadge}>
+            <Text style={styles.islandBadgeText}>Auto</Text>
+          </View>
+        </TouchableOpacity>
+      )}
 
       {/* Modal de Captura Inteligente */}
       <Modal visible={isModalOpen} animationType="fade" transparent onRequestClose={() => setIsModalOpen(false)}>
@@ -186,6 +201,27 @@ export const QuickIslandBar: React.FC<QuickIslandBarProps> = ({ onOpenAddModal }
 };
 
 const styles = StyleSheet.create({
+  iconTrigger: {
+    backgroundColor: Theme.colors.surfaceElevated,
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#334155',
+  },
+  iconBadge: {
+    position: 'absolute',
+    top: 8,
+    right: 9,
+    width: 9,
+    height: 9,
+    borderRadius: 5,
+    backgroundColor: '#10B981',
+    borderWidth: 1.5,
+    borderColor: Theme.colors.surfaceElevated,
+  },
   islandPill: {
     flexDirection: 'row',
     alignItems: 'center',

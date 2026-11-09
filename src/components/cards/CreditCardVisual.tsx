@@ -15,6 +15,8 @@ interface CreditCardVisualProps {
   onAddPurchase?: () => void;
   onPayCard?: () => void;
   compact?: boolean;
+  /** Vista de métrica pura (Home): oculta chip/número y botones de acción. */
+  summary?: boolean;
 }
 
 const { width } = Dimensions.get('window');
@@ -29,6 +31,7 @@ export const CreditCardVisual: React.FC<CreditCardVisualProps> = ({
   onAddPurchase,
   onPayCard,
   compact = false,
+  summary = false,
 }) => {
   const { isBalanceHidden } = useFinancial();
   const usedAmount = card.creditLimit - card.availableLimit;
@@ -67,15 +70,19 @@ export const CreditCardVisual: React.FC<CreditCardVisualProps> = ({
           </View>
         </View>
 
-        {/* Chip y Números */}
-        <View style={styles.middleSection}>
-          <View style={styles.chipVisual}>
-            <View style={styles.chipInner} />
+        {/* Chip y Números (ocultos en la vista resumen) */}
+        {!summary ? (
+          <View style={styles.middleSection}>
+            <View style={styles.chipVisual}>
+              <View style={styles.chipInner} />
+            </View>
+            <Text style={styles.cardNumber}>
+              •••• •••• •••• {card.lastFourDigits || '0000'}
+            </Text>
           </View>
-          <Text style={styles.cardNumber}>
-            •••• •••• •••• {card.lastFourDigits || '0000'}
-          </Text>
-        </View>
+        ) : (
+          <View style={styles.summarySpacer} />
+        )}
 
         {/* Barra de Cupo */}
         <View style={styles.limitSection}>
@@ -154,7 +161,7 @@ export const CreditCardVisual: React.FC<CreditCardVisualProps> = ({
         </View>
 
         {/* Acciones Rápidas (si no es compact) */}
-        {!compact && (
+        {!compact && !summary && (
           <View style={styles.actionsRow}>
             {onViewStatement && (
               <TouchableOpacity style={styles.actionBtn} onPress={onViewStatement}>
@@ -235,6 +242,9 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '800',
     letterSpacing: 1,
+  },
+  summarySpacer: {
+    height: 12,
   },
   middleSection: {
     flexDirection: 'row',

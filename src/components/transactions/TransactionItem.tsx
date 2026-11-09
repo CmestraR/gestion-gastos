@@ -10,9 +10,11 @@ import { CustomIcon } from '../common/CustomIcon';
 interface TransactionItemProps {
   transaction: Transaction;
   onPress?: () => void;
+  /** Formato compacto (Home): icono, descripción, fecha corta y monto. */
+  compact?: boolean;
 }
 
-export const TransactionItem: React.FC<TransactionItemProps> = ({ transaction, onPress }) => {
+export const TransactionItem: React.FC<TransactionItemProps> = ({ transaction, onPress, compact = false }) => {
   const { categories, accounts, creditCards, deleteTransaction, currency } = useFinancial();
   const { showConfirm, showSuccess } = useAlert();
 
@@ -85,7 +87,7 @@ export const TransactionItem: React.FC<TransactionItemProps> = ({ transaction, o
 
   return (
     <TouchableOpacity
-      style={styles.container}
+      style={[styles.container, compact && styles.containerCompact]}
       onPress={onPress}
       onLongPress={handleLongPress}
       activeOpacity={0.75}
@@ -118,7 +120,7 @@ export const TransactionItem: React.FC<TransactionItemProps> = ({ transaction, o
         </View>
 
         {/* Fila 2 (Opcional): 4x1000 en su propia línea */}
-        {hasGmf && (
+        {hasGmf && !compact && (
           <View style={styles.gmfRow}>
             <View style={styles.gmfPill}>
               <Text style={styles.gmfPillText}>4x1000</Text>
@@ -131,9 +133,13 @@ export const TransactionItem: React.FC<TransactionItemProps> = ({ transaction, o
 
         {/* Fila 3: Cuenta & Fecha en letra pequeña */}
         <View style={styles.row}>
-          <Text style={styles.accountText} numberOfLines={1}>
-            {getAccountLabel()}
-          </Text>
+          {!compact ? (
+            <Text style={styles.accountText} numberOfLines={1}>
+              {getAccountLabel()}
+            </Text>
+          ) : (
+            <View style={{ flex: 1 }} />
+          )}
           <Text style={styles.dateText}>
             {formatRelativeDate(transaction.date)}
           </Text>
@@ -154,6 +160,10 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     borderWidth: 1,
     borderColor: '#1E293B',
+  },
+  containerCompact: {
+    paddingVertical: 9,
+    marginBottom: 6,
   },
   iconContainer: {
     width: 40,
